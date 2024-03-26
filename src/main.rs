@@ -1,6 +1,6 @@
 //! A simple 3D scene with light shining over a cube sitting on a plane.
 
-use bevy::prelude::*;
+use bevy::{math::vec3, prelude::*};
 use bevy_flycam::prelude::*;
 use bevy::{
     core_pipeline::{
@@ -29,7 +29,7 @@ use bevy::{
 
 use iyes_perf_ui::prelude::*;
 
-
+mod map;
 
 
 
@@ -81,23 +81,27 @@ fn setup(
     
 
     // circular base
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Circle::new(4.0)),
-        material: materials.add(Color::WHITE),
-        transform: Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
-        ..default()
-    });
+    // commands.spawn(PbrBundle {
+    //     mesh: meshes.add(Circle::new(4.0)),
+    //     material: materials.add(Color::WHITE),
+    //     transform: Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
+    //     ..default()
+    // });
     // cube
-    commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Cuboid::default()),
-            material: materials.add(Color::rgb(0.2, 1.0, 0.2)),
-            transform: Transform::from_xyz(0.0, 0.5, 0.0),
-            ..default()
-        },
-        Rotates,
-    ));
+    // commands.spawn((
+    //     PbrBundle {
+    //         mesh: meshes.add(Cuboid::default()),
+    //         material: materials.add(Color::rgb(0.2, 1.0, 0.2)),
+    //         transform: Transform::from_xyz(0.0, 0.5, 0.0),
+    //         ..default()
+    //     },
+    //     Rotates,
+    // ));
     // light
+
+    let matrix = map::create_matrix(30);
+    spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &matrix);
+
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             illuminance: 1_000.,
@@ -133,6 +137,70 @@ fn setup(
     commands.spawn(PerfUiCompleteBundle::default());
 
 }
+
+
+
+
+
+
+fn spawn_cubes_from_matrix(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    matrix: &Vec<Vec<Vec<map::CellType>>>,
+) {
+    let cube_size = 1.0; 
+    let spacing = 1.2; 
+
+    // Find the coordinates of the start cell
+    let mut start_x = 0; 
+    let mut start_y = 0; 
+    let mut start_z = 0;
+    for (z, layer) in matrix.iter().enumerate() { 
+        for (y, row) in layer.iter().enumerate() {
+            for (x, cell) in row.iter().enumerate() {
+                if *cell == map::CellType::Start {
+                    start_x = x;
+                    start_y = y; 
+                    start_z = z; 
+                    break; // Found the start, stop searching
+                }
+            }
+        }
+    }
+
+    for (z, layer) in matrix.iter().enumerate() {
+        for (y, row) in layer.iter().enumerate() {
+            for (x, cell) in row.iter().enumerate() {
+                if *cell != map::CellType::Empty {  // Customize the condition
+                    let color = match cell {
+                        map::CellType::Empty => Color::rgb(0.8, 0.8, 0.8), // Adjust for background color
+                        map::CellType::Room => Color::rgb(0.2, 1.0, 0.2), // Green for rooms
+                        map::CellType::Start => Color::rgb(0.0, 0.0, 1.0), // Blue for start
+                        map::CellType::DeadEnd => Color::rgb(1.0, 1.0, 0.0), // Yellow for dead ends
+                    };    
+                    let x_pos = (x as f32 * spacing) - (start_x as f32 * spacing);
+                    let y_pos = (y as f32 * spacing) - (start_y as f32 * spacing);
+                    let z_pos = (z as f32 * spacing) - (start_z as f32 * spacing);
+
+                    commands.spawn((
+                        PbrBundle {
+                            mesh: meshes.add(Cuboid::from_size(vec3(cube_size, cube_size, cube_size))), // Use Cuboid if needed
+                            material: materials.add(color), // Adjust color as needed
+                            transform: Transform::from_xyz(x_pos, y_pos, z_pos),
+                            ..default()
+                        },
+                        // You might want more components like Rotates 
+                        // Rotates
+                    )); 
+                }
+            }
+        }
+    }
+}
+
+
+
 
 
 
