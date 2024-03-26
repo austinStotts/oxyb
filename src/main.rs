@@ -1,4 +1,5 @@
-//! A simple 3D scene with light shining over a cube sitting on a plane.
+
+use std::path::Component;
 
 use bevy::{math::vec3, prelude::*};
 use bevy_flycam::prelude::*;
@@ -20,16 +21,39 @@ use bevy::{
             binding_types::{sampler, texture_2d, uniform_buffer},
             *,
         },
+        
+        camera::RenderTarget,
         renderer::{RenderContext, RenderDevice},
         texture::BevyDefault,
         view::ViewTarget,
         RenderApp,
     },
+    window::WindowRef,
 };
+
 
 use iyes_perf_ui::prelude::*;
 
 mod map;
+
+
+
+
+
+
+#[derive(Component, Default, Clone, Copy, ExtractComponent, ShaderType)]
+struct PostProcessSettings {
+    intensity: f32,
+    sigma1: f32,
+    tau: f32,
+    gfact: f32,
+    epsilon: f32,
+    num_gvf_iterations: i32,
+    enable_xdog: u32,
+}
+
+
+
 
 
 
@@ -53,22 +77,23 @@ fn main() {
             move_descend: KeyCode::ControlLeft,
             ..Default::default()
         })
+        .insert_resource(ActiveCamera::Primary)
         .add_systems(Startup, setup)
-        .add_systems(Update, (rotate, update_settings))
+        .add_systems(Update, (rotate, update_settings, keyboard_input, switch_cameras))
         .run();
 }
 
 
+#[derive(Component)]
+struct MainCamera;
 
-#[derive(Component, Default, Clone, Copy, ExtractComponent, ShaderType)]
-struct PostProcessSettings {
-    intensity: f32,
-    sigma1: f32,
-    tau: f32,
-    gfact: f32,
-    epsilon: f32,
-    num_gvf_iterations: i32,
-    enable_xdog: u32,
+#[derive(Component)]
+struct SecondCamera;
+
+#[derive(Resource)]
+enum ActiveCamera {
+    Primary,
+    Secondary
 }
 
 
@@ -78,28 +103,7 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
 
-    
-
-    // circular base
-    // commands.spawn(PbrBundle {
-    //     mesh: meshes.add(Circle::new(4.0)),
-    //     material: materials.add(Color::WHITE),
-    //     transform: Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
-    //     ..default()
-    // });
-    // cube
-    // commands.spawn((
-    //     PbrBundle {
-    //         mesh: meshes.add(Cuboid::default()),
-    //         material: materials.add(Color::rgb(0.2, 1.0, 0.2)),
-    //         transform: Transform::from_xyz(0.0, 0.5, 0.0),
-    //         ..default()
-    //     },
-    //     Rotates,
-    // ));
-    // light
-
-    let matrix = map::create_matrix(30);
+    let matrix = map::create_matrix(5);
     spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &matrix);
 
     commands.spawn(DirectionalLightBundle {
@@ -110,13 +114,16 @@ fn setup(
         ..default()
     });
     
-    // camera
+    // main camera
     commands.spawn((
         Camera3dBundle {
             transform: Transform::from_translation(Vec3::new(0.0, 2.0, 5.0))
                 .looking_at(Vec3::default(), Vec3::Y),
             camera: Camera {
                 clear_color: Color::WHITE.into(),
+                // target: RenderTarget::Window(WindowRef::Primary),
+                order: 1,
+                is_active: true,
                 ..default()
             },
             ..default()
@@ -130,14 +137,31 @@ fn setup(
             num_gvf_iterations: 15,
             enable_xdog: 1,
         },
-        FlyCam
-    ));
+        FlyCam,
+    )).insert(MainCamera);
 
     // frame times
     commands.spawn(PerfUiCompleteBundle::default());
 
-}
+    // second camera
+    commands.spawn((
+        Camera3dBundle {
+            transform: Transform::from_translation(Vec3::new(0.0, 2.0, 5.0))
+                .looking_at(Vec3::default(), Vec3::Y),
+            camera: Camera {
+                clear_color: Color::WHITE.into(),
+                order: 0,
+                is_active: false,
+                ..default()
 
+            },
+            ..default()
+        },
+    )).insert(SecondCamera);
+
+
+
+}
 
 
 
@@ -201,13 +225,44 @@ fn spawn_cubes_from_matrix(
 
 
 
+fn switch_cameras(
+    mut active_camera: ResMut<ActiveCamera>,
+    mut main_camera: Query<&mut Camera, With<MainCamera>>, 
+    mut secondary_camera: Query<&mut Camera, Without<MainCamera>>, 
+) {
+
+    // set main camera
+    for mut camera in main_camera.iter_mut() {
+        match *active_camera {
+            ActiveCamera::Primary => {
+                camera.is_active = true;
+            },
+            ActiveCamera::Secondary => {
+                camera.is_active = false;
+            },
+        }
+    }
+
+    // set other cameras
+    for mut camera in secondary_camera.iter_mut() {
+        match *active_camera {
+            ActiveCamera::Primary => {
+                camera.is_active = false;
+            },
+            ActiveCamera::Secondary => {
+                camera.is_active = true;
+            },
+        }
+    }
+
+}
+
 
 
 
 #[derive(Component)]
-struct Rotates;
+struct Rotates; // ROTATES
 
-/// Rotates any entity around the x and y axis
 fn rotate(time: Res<Time>, mut query: Query<&mut Transform, With<Rotates>>) {
     for mut transform in &mut query {
         transform.rotate_x(0.55 * time.delta_seconds());
@@ -215,21 +270,61 @@ fn rotate(time: Res<Time>, mut query: Query<&mut Transform, With<Rotates>>) {
     }
 }
 
-// Change the intensity over time to show that the effect is controlled from the main world
+
+#[derive(Component)]
+struct KeyboardInput;
+
+fn keyboard_input(
+    input: Res<ButtonInput<KeyCode>>,
+    mut active_camera: ResMut<ActiveCamera>,
+) {
+    if input.pressed(KeyCode::KeyW) {
+        info!("'W' currently pressed");
+    }
+    if input.just_pressed(KeyCode::KeyA) {
+        info!("'A' just pressed");
+    }
+    if input.just_released(KeyCode::KeyS) {
+        info!("'S' just released");
+    }
+    if input.just_released(KeyCode::KeyD) {
+        info!("'D' just released");
+    }
+    if input.just_released(KeyCode::Space) {
+        info!("'Space' just released");
+    }
+    if input.just_released(KeyCode::ControlLeft) {
+        info!("'Left CTRL' just released");
+    }
+    if input.just_released(KeyCode::ShiftLeft) {
+        info!("'Left SHIFT' just released");
+    }
+    if input.just_released(KeyCode::KeyF) {
+        info!("'F' just released");
+    }
+    if input.just_released(KeyCode::KeyE) {
+        info!("'E' just released");
+    }
+    if input.just_released(KeyCode::KeyQ) {
+        info!("'Q' just released");
+    }
+    if input.just_pressed(KeyCode::Tab) {
+        *active_camera = ActiveCamera::Secondary;
+    }
+    if input.just_released(KeyCode::Tab) {
+        *active_camera = ActiveCamera::Primary;
+    }
+}
+
+
 fn update_settings(mut settings: Query<&mut PostProcessSettings>, time: Res<Time>) {
     for mut setting in &mut settings {
         let mut intensity = time.elapsed_seconds().sin();
-        // Make it loop periodically
         intensity = intensity.sin();
-        // Remap it to 0..1 because the intensity can't be negative
         intensity = intensity * 0.5 + 0.5;
-        // Scale it to a more reasonable level
         intensity *= 0.005;
 
-        // Set the intensity.
-        // This will then be extracted to the render world and uploaded to the gpu automatically by the [`UniformComponentPlugin`]
         setting.intensity = intensity;
-        // settings.sigma1 = 8.0;
     }
 }
 
@@ -237,17 +332,7 @@ fn update_settings(mut settings: Query<&mut PostProcessSettings>, time: Res<Time
 
 
 
-
-
-
-
-
-
-
-
-
-/// It is generally encouraged to set up post processing effects as a plugin
-struct PostProcessPlugin;
+struct PostProcessPlugin; // POST-PROCESS PLUGIN
 
 impl Plugin for PostProcessPlugin {
     fn build(&self, app: &mut App) {
@@ -256,7 +341,6 @@ impl Plugin for PostProcessPlugin {
             UniformComponentPlugin::<PostProcessSettings>::default(),
         ));
 
-        // We need to get the render app from the main app
         let Ok(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
         };
@@ -288,25 +372,69 @@ impl Plugin for PostProcessPlugin {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #[derive(Debug, Hash, PartialEq, Eq, Clone, RenderLabel)]
-struct PostProcessLabel;
+struct PostProcessLabel; // POST-PROCESS LABEL
+
+
+
+#[derive(Resource)]
+struct PostProcessPipeline {
+    layout: BindGroupLayout,
+    sampler: Sampler,
+    pipeline_id: CachedRenderPipelineId,
+}
+
+impl FromWorld for PostProcessPipeline {
+    fn from_world(world: &mut World) -> Self {
+        let render_device = world.resource::<RenderDevice>();
+        let layout = render_device.create_bind_group_layout(
+            "post_process_bind_group_layout",
+            &BindGroupLayoutEntries::sequential(
+                ShaderStages::FRAGMENT,
+                (
+                    texture_2d(TextureSampleType::Float { filterable: true }),
+                    sampler(SamplerBindingType::Filtering),
+                    uniform_buffer::<PostProcessSettings>(false),
+                ),
+            ),
+        );
+
+        let sampler = render_device.create_sampler(&SamplerDescriptor::default());
+
+        let shader = world
+            .resource::<AssetServer>()
+            .load("shaders\\post_processing.wgsl");
+
+        let pipeline_id = world
+            .resource_mut::<PipelineCache>()
+            .queue_render_pipeline(RenderPipelineDescriptor {
+                label: Some("post_process_pipeline".into()),
+                layout: vec![layout.clone()],
+                vertex: fullscreen_shader_vertex_state(),
+                fragment: Some(FragmentState {
+                    shader,
+                    shader_defs: vec![],
+                    entry_point: "fragment".into(),
+                    targets: vec![Some(ColorTargetState {
+                        format: TextureFormat::bevy_default(),
+                        blend: None,
+                        write_mask: ColorWrites::ALL,
+                    })],
+                }),
+                primitive: PrimitiveState::default(),
+                depth_stencil: None,
+                multisample: MultisampleState::default(),
+                push_constant_ranges: vec![],
+            });
+
+        Self {
+            layout,
+            sampler,
+            pipeline_id,
+        }
+    }
+}
+
 
 
 #[derive(Default)]
@@ -319,13 +447,6 @@ impl ViewNode for PostProcessNode {
         &'static PostProcessSettings,
     );
 
-    // Runs the node logic
-    // This is where you encode draw commands.
-    //
-    // This will run on every view on which the graph is running.
-    // If you don't want your effect to run on every camera,
-    // you'll need to make sure you have a marker component as part of [`ViewQuery`]
-    // to identify which camera(s) should run the effect.
     fn run(
         &self,
         _graph: &mut RenderGraphContext,
@@ -333,22 +454,14 @@ impl ViewNode for PostProcessNode {
         (view_target, _post_process_settings): QueryItem<Self::ViewQuery>,
         world: &World,
     ) -> Result<(), NodeRunError> {
-        // Get the pipeline resource that contains the global data we need
-        // to create the render pipeline
         let post_process_pipeline = world.resource::<PostProcessPipeline>();
-
-        // The pipeline cache is a cache of all previously created pipelines.
-        // It is required to avoid creating a new pipeline each frame,
-        // which is expensive due to shader compilation.
         let pipeline_cache = world.resource::<PipelineCache>();
 
-        // Get the pipeline from the cache
         let Some(pipeline) = pipeline_cache.get_render_pipeline(post_process_pipeline.pipeline_id)
         else {
             return Ok(());
         };
 
-        // Get the settings uniform binding
         let settings_uniforms = world.resource::<ComponentUniforms<PostProcessSettings>>();
         let Some(settings_binding) = settings_uniforms.uniforms().binding() else {
             return Ok(());
@@ -363,33 +476,19 @@ impl ViewNode for PostProcessNode {
         // the current main texture information to be lost.
         let post_process = view_target.post_process_write();
 
-        // The bind_group gets created each frame.
-        //
-        // Normally, you would create a bind_group in the Queue set,
-        // but this doesn't work with the post_process_write().
-        // The reason it doesn't work is because each post_process_write will alternate the source/destination.
-        // The only way to have the correct source/destination for the bind_group
-        // is to make sure you get it during the node execution.
         let bind_group = render_context.render_device().create_bind_group(
             "post_process_bind_group",
             &post_process_pipeline.layout,
-            // It's important for this to match the BindGroupLayout defined in the PostProcessPipeline
             &BindGroupEntries::sequential((
-                // Make sure to use the source view
                 post_process.source,
-                // Use the sampler created for the pipeline
                 &post_process_pipeline.sampler,
-                // Set the settings binding
                 settings_binding.clone(),
             )),
         );
 
-        // Begin the render pass
         let mut render_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
             label: Some("post_process_pass"),
             color_attachments: &[Some(RenderPassColorAttachment {
-                // We need to specify the post process destination view here
-                // to make sure we write to the appropriate texture.
                 view: post_process.destination,
                 resolve_target: None,
                 ops: Operations::default(),
@@ -399,8 +498,6 @@ impl ViewNode for PostProcessNode {
             occlusion_query_set: None,
         });
 
-        // This is mostly just wgpu boilerplate for drawing a fullscreen triangle,
-        // using the pipeline/bind_group created above
         render_pass.set_render_pipeline(pipeline);
         render_pass.set_bind_group(0, &bind_group, &[]);
         render_pass.draw(0..3, 0..1);
@@ -411,88 +508,6 @@ impl ViewNode for PostProcessNode {
 
 
 
-
-
-
-
-
-
-
-
-
-
-// This contains global data used by the render pipeline. This will be created once on startup.
-#[derive(Resource)]
-struct PostProcessPipeline {
-    layout: BindGroupLayout,
-    sampler: Sampler,
-    pipeline_id: CachedRenderPipelineId,
-}
-
-impl FromWorld for PostProcessPipeline {
-    fn from_world(world: &mut World) -> Self {
-        let render_device = world.resource::<RenderDevice>();
-
-        // We need to define the bind group layout used for our pipeline
-        let layout = render_device.create_bind_group_layout(
-            "post_process_bind_group_layout",
-            &BindGroupLayoutEntries::sequential(
-                // The layout entries will only be visible in the fragment stage
-                ShaderStages::FRAGMENT,
-                (
-                    // The screen texture
-                    texture_2d(TextureSampleType::Float { filterable: true }),
-                    // The sampler that will be used to sample the screen texture
-                    sampler(SamplerBindingType::Filtering),
-                    // The settings uniform that will control the effect
-                    uniform_buffer::<PostProcessSettings>(false),
-                ),
-            ),
-        );
-
-        // We can create the sampler here since it won't change at runtime and doesn't depend on the view
-        let sampler = render_device.create_sampler(&SamplerDescriptor::default());
-
-        // Get the shader handle
-        let shader = world
-            .resource::<AssetServer>()
-            .load("shaders\\post_processing.wgsl");
-
-        let pipeline_id = world
-            .resource_mut::<PipelineCache>()
-            // This will add the pipeline to the cache and queue it's creation
-            .queue_render_pipeline(RenderPipelineDescriptor {
-                label: Some("post_process_pipeline".into()),
-                layout: vec![layout.clone()],
-                // This will setup a fullscreen triangle for the vertex state
-                vertex: fullscreen_shader_vertex_state(),
-                fragment: Some(FragmentState {
-                    shader,
-                    shader_defs: vec![],
-                    // Make sure this matches the entry point of your shader.
-                    // It can be anything as long as it matches here and in the shader.
-                    entry_point: "fragment".into(),
-                    targets: vec![Some(ColorTargetState {
-                        format: TextureFormat::bevy_default(),
-                        blend: None,
-                        write_mask: ColorWrites::ALL,
-                    })],
-                }),
-                // All of the following properties are not important for this effect so just use the default values.
-                // This struct doesn't have the Default trait implemented because not all field can have a default value.
-                primitive: PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: MultisampleState::default(),
-                push_constant_ranges: vec![],
-            });
-
-        Self {
-            layout,
-            sampler,
-            pipeline_id,
-        }
-    }
-}
 
 
 
