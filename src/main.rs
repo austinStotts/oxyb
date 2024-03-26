@@ -179,10 +179,27 @@ fn spawn_cubes_from_matrix(
 
     for room in room_list {
         let cube_size = Vec3::new(room.dimensions.0, room.dimensions.1, room.dimensions.2);
+        let spacing = 1.2;
 
-        let x_pos = room.position.0 - cube_size.x / 2.0;
-        let y_pos = room.position.1 - cube_size.x / 2.0;
-        let z_pos = room.position.2 - cube_size.x / 2.0;
+        let x_pos: f32;
+        let y_pos: f32;
+        let z_pos: f32;
+
+        if room.dimensions.0 > 1.0 {
+            x_pos = (room.position.0 * spacing) + 0.2;
+            y_pos = (room.position.1 * spacing) - (cube_size.x / 2.0 * spacing );
+            z_pos = (room.position.2 * spacing) - (cube_size.x / 2.0 * spacing );
+        } else if room.dimensions.2 > 1.0 {
+            x_pos = (room.position.0 * spacing) - (cube_size.x / 2.0 * spacing );
+            y_pos = (room.position.1 * spacing) - (cube_size.x / 2.0 * spacing );
+            z_pos = (room.position.2 * spacing) + 0.2;
+        } else {
+            x_pos = (room.position.0 * spacing) - (cube_size.x / 2.0 * spacing );
+            y_pos = (room.position.1 * spacing) - (cube_size.x / 2.0 * spacing );
+            z_pos = (room.position.2 * spacing) - (cube_size.x / 2.0 * spacing );
+        }
+
+
 
         commands.spawn((
             PbrBundle {

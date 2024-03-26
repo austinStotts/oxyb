@@ -114,7 +114,7 @@ pub fn create_matrix(n: usize) -> HashSet<Room> {
     room_list.insert(Room {
          position: (sx as f32, sy as f32, sz as f32),
          dimensions: (1.0, 1.0, 1.0), 
-         color: [0.8, 0.8, 0.8, 1.0], // Example color
+         color: [0.2, 1.0, 0.2, 1.0], // Example color
     });
 
     while rooms_to_go > 0 {
@@ -174,7 +174,7 @@ pub fn create_matrix(n: usize) -> HashSet<Room> {
                             } else {
                                 (1.0, 1.0, 2.0)
                             },
-                            color: [0.8, 0.8, 0.8, 1.0],
+                            color: [0.8, 0.8, 0.3, 1.0],
                         };
                         room_list.insert(new_room);
                     }
