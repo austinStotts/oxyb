@@ -2,8 +2,8 @@ use rand::prelude::*;
 use std::fmt;
 use std::cmp::max;
 use std::cmp::min;
-use std::collections::HashSet;
 use rand::distributions::WeightedIndex; 
+use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 
 
@@ -30,10 +30,11 @@ impl fmt::Display for CellType {
     }
 }
 
-struct Room {
-    position: (f32, f32, f32),
-    dimensions: (f32, f32, f32),
-    color: [f32; 4], // RGBA color for now (assuming no textures)
+#[derive(Clone, Copy)]
+pub struct Room {
+    pub position: (f32, f32, f32),
+    pub dimensions: (f32, f32, f32),
+    pub color: [f32; 4], // RGBA color for now (assuming no textures)
 }
 
 impl PartialEq for Room {
@@ -46,7 +47,9 @@ impl Eq for Room {} // Required if you implement PartialEq
 
 impl Hash for Room {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.position.hash(state); 
+        (self.position.0 as i32).hash(state); 
+        (self.position.1 as i32).hash(state); 
+        (self.position.2 as i32).hash(state); 
     }
 }
 
@@ -95,7 +98,7 @@ fn weighted_rand(weights: &[usize]) -> usize {
     dist.sample(&mut rng)
 }
 
-pub fn create_matrix(n: usize) -> Vec<Vec<Vec<CellType>>> {
+pub fn create_matrix(n: usize) -> HashSet<Room> {
     let mut matrix: Vec<Vec<Vec<CellType>>> = vec![vec![vec![CellType::Empty; n]; n]; n];
 
     let mut rooms_to_go = (n as f32 * 1.5 - 1.0) as usize;
@@ -115,7 +118,11 @@ pub fn create_matrix(n: usize) -> Vec<Vec<Vec<CellType>>> {
     });
 
     while rooms_to_go > 0 {
-        let room = *room_list.iter().choose(&mut rng).unwrap();
+        let mut room = *room_list.iter().choose(&mut rng).unwrap();
+
+        let room_x = room.position.0 as usize;
+        let room_y = room.position.1 as usize;
+        let room_z = room.position.2 as usize;
 
         let direction_weights = [2, 2, 1, 1, 2, 2]; // More weight for horizontal directions
         let direction = weighted_rand(&direction_weights);
@@ -139,36 +146,40 @@ pub fn create_matrix(n: usize) -> Vec<Vec<Vec<CellType>>> {
                     rooms_to_go -= 1;
                 } else { // 30% chance to create a larger room
                         // Decide on horizontal or vertical extension
-                        if rng.gen_bool(0.5) { 
-                            // Extend horizontally
+                    let extend_horizontal = rng.gen_bool(0.5);
+                    let temp_room = Room {
+                        position: (new_x as f32, new_y as f32, new_z as f32),
+                        dimensions: (0.0, 0.0, 0.0),
+                        color: [0.0, 0.0, 0.0, 0.0]
+                    };
+
+                    if let Some(Room) = room_list.take(&temp_room) {
+                        if extend_horizontal {
                             if new_x + 1 < n && matrix[new_x + 1][new_y][new_z] == CellType::Empty {
-                                matrix[new_x + 1][new_y][new_z] = CellType::Room; 
-                    
-                                room_list.get_mut(&(new_x, new_y, new_z)).map(|room| room.dimensions.0 += 1.0); // Modify dimensions for existing room
+                                matrix[new_x + 1][new_y][new_z] = CellType::Room;
+                                room.dimensions.0 += 1.0;
                             }
                         } else {
-                            // Extend vertically
                             if new_z + 1 < n && matrix[new_x][new_y][new_z + 1] == CellType::Empty {
-                                matrix[new_x][new_y][new_z + 1] = CellType::Room; 
-                    
-                                room_list.get_mut(&(new_x, new_y, new_z)).map(|room| room.dimensions.2 += 1.0); // Modify dimensions for existing room
+                                matrix[new_x][new_y][new_z + 1] = CellType::Room;
+                                room.dimensions.2 += 1.0;
                             }
                         }
-                    
-                        // If the room is new (not an extension), add the Room to room_list 
-                        if !room_list.contains(&(new_x, new_y, new_z)) {
-                            let new_room = Room { 
-                                position: (new_x as f32, new_y as f32, new_z as f32),
-                                dimensions: if new_x + 1 < n && matrix[new_x + 1][new_y][new_z] == CellType::Empty {  
-                                    (2.0, 1.0, 1.0) 
-                                } else {
-                                    (1.0, 1.0, 2.0)
-                                },
-                                color: [0.8, 0.8, 0.8, 1.0],
-                            };
-                            room_list.insert(new_room); 
-                        }
+                        room_list.insert(room);
+                    } else {
+                        let new_room = Room {
+                            position: (new_x as f32, new_y as f32, new_z as f32),
+                            dimensions: if extend_horizontal {
+                                (2.0, 1.0, 1.0)
+                            } else {
+                                (1.0, 1.0, 2.0)
+                            },
+                            color: [0.8, 0.8, 0.8, 1.0],
+                        };
+                        room_list.insert(new_room);
                     }
+
+                }
             }
         }
     }
@@ -189,7 +200,7 @@ pub fn create_matrix(n: usize) -> Vec<Vec<Vec<CellType>>> {
     if  check_total_fills(&matrix) == n && check_total_dead_ends(&matrix) >= 2 {
         return create_matrix(n);
     } else {
-        return matrix;
+        return room_list;
     }
         // return matrix;
 }

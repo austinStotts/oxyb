@@ -30,12 +30,14 @@ use bevy::{
     },
     window::WindowRef,
 };
+use map::Room;
 
-
+use std::collections::HashSet;
+use std::hash::{Hash, Hasher};
 use iyes_perf_ui::prelude::*;
 
 mod map;
-
+// use map::Room;
 
 
 
@@ -103,8 +105,8 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
 
-    let matrix = map::create_matrix(5);
-    spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &matrix);
+    let room_list: HashSet<map::Room> = map::create_matrix(5);
+    spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &room_list);
 
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
@@ -171,56 +173,74 @@ fn spawn_cubes_from_matrix(
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
-    matrix: &Vec<Vec<Vec<map::CellType>>>,
+    room_list: &HashSet<map::Room>,
 ) {
-    let cube_size = 1.0; 
-    let spacing = 1.2; 
 
-    // Find the coordinates of the start cell
-    let mut start_x = 0; 
-    let mut start_y = 0; 
-    let mut start_z = 0;
-    for (z, layer) in matrix.iter().enumerate() { 
-        for (y, row) in layer.iter().enumerate() {
-            for (x, cell) in row.iter().enumerate() {
-                if *cell == map::CellType::Start {
-                    start_x = x;
-                    start_y = y; 
-                    start_z = z; 
-                    break; // Found the start, stop searching
-                }
-            }
-        }
+
+    for room in room_list {
+        let cube_size = Vec3::new(room.dimensions.0, room.dimensions.1, room.dimensions.2);
+
+        let x_pos = room.position.0 - cube_size.x / 2.0;
+        let y_pos = room.position.1 - cube_size.x / 2.0;
+        let z_pos = room.position.2 - cube_size.x / 2.0;
+
+        commands.spawn((
+            PbrBundle {
+                mesh: meshes.add(Cuboid::from_size(vec3(cube_size.x, cube_size.y, cube_size.z))), // Use Cuboid if needed
+                material: materials.add(Color::rgb(room.color[0], room.color[1], room.color[2])), // Adjust color as needed
+                transform: Transform::from_xyz(x_pos, y_pos, z_pos),
+                ..default()
+            },
+            // You might want more components like Rotates 
+            // Rotates
+        )); 
     }
 
-    for (z, layer) in matrix.iter().enumerate() {
-        for (y, row) in layer.iter().enumerate() {
-            for (x, cell) in row.iter().enumerate() {
-                if *cell != map::CellType::Empty {  // Customize the condition
-                    let color = match cell {
-                        map::CellType::Empty => Color::rgb(0.8, 0.8, 0.8), // Adjust for background color
-                        map::CellType::Room => Color::rgb(0.2, 1.0, 0.2), // Green for rooms
-                        map::CellType::Start => Color::rgb(0.0, 0.0, 1.0), // Blue for start
-                        map::CellType::DeadEnd => Color::rgb(1.0, 1.0, 0.0), // Yellow for dead ends
-                    };    
-                    let x_pos = (x as f32 * spacing) - (start_x as f32 * spacing);
-                    let y_pos = (y as f32 * spacing) - (start_y as f32 * spacing);
-                    let z_pos = (z as f32 * spacing) - (start_z as f32 * spacing);
 
-                    commands.spawn((
-                        PbrBundle {
-                            mesh: meshes.add(Cuboid::from_size(vec3(cube_size, cube_size, cube_size))), // Use Cuboid if needed
-                            material: materials.add(color), // Adjust color as needed
-                            transform: Transform::from_xyz(x_pos, y_pos, z_pos),
-                            ..default()
-                        },
-                        // You might want more components like Rotates 
-                        // Rotates
-                    )); 
-                }
-            }
-        }
-    }
+
+
+
+    // let cube_size = 1.0; 
+    // let spacing = 1.2; 
+
+    // // Find the coordinates of the start cell
+    // let mut start_x = 0; 
+    // let mut start_y = 0; 
+    // let mut start_z = 0;
+    // for (z, layer) in matrix.iter().enumerate() { 
+    //     for (y, row) in layer.iter().enumerate() {
+    //         for (x, cell) in row.iter().enumerate() {
+    //             if *cell == map::CellType::Start {
+    //                 start_x = x;
+    //                 start_y = y; 
+    //                 start_z = z; 
+    //                 break; // Found the start, stop searching
+    //             }
+    //         }
+    //     }
+    // }
+
+    // for (z, layer) in matrix.iter().enumerate() {
+    //     for (y, row) in layer.iter().enumerate() {
+    //         for (x, cell) in row.iter().enumerate() {
+    //             if *cell != map::CellType::Empty {  // Customize the condition
+    //                 let color = match cell {
+    //                     map::CellType::Empty => Color::rgb(0.8, 0.8, 0.8), // Adjust for background color
+    //                     map::CellType::Room => Color::rgb(0.2, 1.0, 0.2), // Green for rooms
+    //                     map::CellType::Start => Color::rgb(0.0, 0.0, 1.0), // Blue for start
+    //                     map::CellType::DeadEnd => Color::rgb(1.0, 1.0, 0.0), // Yellow for dead ends
+    //                 };    
+    //                 let x_pos = (x as f32 * spacing) - (start_x as f32 * spacing);
+    //                 let y_pos = (y as f32 * spacing) - (start_y as f32 * spacing);
+    //                 let z_pos = (z as f32 * spacing) - (start_z as f32 * spacing);
+
+    //                 for room in room_list
+
+
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 
