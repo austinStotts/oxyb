@@ -30,7 +30,7 @@ use bevy::{
     },
     window::WindowRef,
 };
-use map::Room;
+use map::{Room, Rotation};
 
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
@@ -61,11 +61,22 @@ struct PostProcessSettings {
 
 
 
-
-
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, PostProcessPlugin, NoCameraPlayerPlugin))
+        .add_plugins((DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "oxy beta".into(),
+                name: Some("bevy.app".into()),
+                resolution: (500., 300.).into(),
+                prevent_default_event_handling: false,
+                enabled_buttons: bevy::window::EnabledButtons {
+                    maximize: false,
+                    ..Default::default()
+                },
+                ..default()
+            }),
+            ..default()
+        }), PostProcessPlugin, NoCameraPlayerPlugin))
         .add_plugins(bevy::diagnostic::FrameTimeDiagnosticsPlugin)
         .add_plugins(bevy::diagnostic::EntityCountDiagnosticsPlugin)
         .add_plugins(bevy::diagnostic::SystemInformationDiagnosticsPlugin)
@@ -105,8 +116,8 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
 
-    let room_list: HashSet<map::Room> = map::create_matrix(5);
-    spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &room_list);
+    let rooms: Vec<map::Room> = map::generate_map(10);
+    spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &rooms);
 
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
@@ -167,50 +178,90 @@ fn setup(
 
 
 
-
+fn calculate_offset(dimentions: (usize, usize, usize)) -> (f32, f32, f32) {
+    (dimentions.0 as f32 / 2.0, dimentions.1 as f32, dimentions.2 as f32 / 2.0,)
+}
 
 fn spawn_cubes_from_matrix(
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
-    room_list: &HashSet<map::Room>,
+    rooms: &Vec<map::Room>,
 ) {
 
+    let spacing = 1.2;
 
-    for room in room_list {
-        let cube_size = Vec3::new(room.dimensions.0, room.dimensions.1, room.dimensions.2);
-        let spacing = 1.2;
+    for room in rooms {
+        let mut color: [f32; 4];
+        match room.room_type {
+            map::RoomType::Cube => { color = [1.0, 0.3, 0.8, 1.0] },
+            map::RoomType::R1 => { color = [3.0, 0.7, 0.8, 1.0] },
+            map::RoomType::R2 => { color = [3.0, 0.7, 0.8, 1.0] },
+            map::RoomType::R3 => { color = [3.0, 0.7, 0.8, 1.0] },
+            map::RoomType::R4 => { color = [3.0, 0.7, 0.8, 1.0] },
+        }
+        let (dx, dy, dz) = room.dimensions;
+        if let Some((x, y, z)) = room.position {
 
-        let x_pos: f32;
-        let y_pos: f32;
-        let z_pos: f32;
+            let offset = calculate_offset((dx as usize, dy as usize, dz as usize));
 
-        if room.dimensions.0 > 1.0 {
-            x_pos = (room.position.0 * spacing) + 0.2;
-            y_pos = (room.position.1 * spacing) - (cube_size.x / 2.0 * spacing );
-            z_pos = (room.position.2 * spacing) - (cube_size.x / 2.0 * spacing );
-        } else if room.dimensions.2 > 1.0 {
-            x_pos = (room.position.0 * spacing) - (cube_size.x / 2.0 * spacing );
-            y_pos = (room.position.1 * spacing) - (cube_size.x / 2.0 * spacing );
-            z_pos = (room.position.2 * spacing) + 0.2;
-        } else {
-            x_pos = (room.position.0 * spacing) - (cube_size.x / 2.0 * spacing );
-            y_pos = (room.position.1 * spacing) - (cube_size.x / 2.0 * spacing );
-            z_pos = (room.position.2 * spacing) - (cube_size.x / 2.0 * spacing );
+            let px = (x as f32 * spacing) - offset.0;
+            let py = (y as f32 * spacing) - offset.1;
+            let pz = (z as f32 * spacing) - offset.2;
+
+            let mut transform = Transform::from_xyz(px, py, pz);
+
+            transform.rotation = match room.rotation {
+                Rotation::None => Quat::IDENTITY,
+                // Rotation::Rot90 => Quat::from_axis_angle(Vec3::X, std::f32::consts::PI / 2.0),
+                // Rotation::Rot180 => Quat::from_axis_angle(Vec3::X, std::f32::consts::PI),
+                // Rotation::Rot270 => Quat::from_axis_angle(Vec3::X, std::f32::consts::PI * 3.0 / 2.0),
+            };
+
+            println!("{:?}", transform.rotation);
+
+            commands.spawn((
+                PbrBundle {
+                    mesh: meshes.add(Cuboid::from_size(vec3(dx as f32, dy as f32, dz as f32))), // Use Cuboid if needed
+                    material: materials.add(Color::rgba(color[0], color[1], color[2], color[3])), // Adjust color as needed
+                    transform,
+                    ..default()
+                },
+            )); 
         }
 
 
 
-        commands.spawn((
-            PbrBundle {
-                mesh: meshes.add(Cuboid::from_size(vec3(cube_size.x, cube_size.y, cube_size.z))), // Use Cuboid if needed
-                material: materials.add(Color::rgb(room.color[0], room.color[1], room.color[2])), // Adjust color as needed
-                transform: Transform::from_xyz(x_pos, y_pos, z_pos),
-                ..default()
-            },
-            // You might want more components like Rotates 
-            // Rotates
-        )); 
+        // let spacing = 1.2;
+
+        // let x_pos: f32;
+        // let y_pos: f32;
+        // let z_pos: f32;
+
+        // if room.dimensions.0 > 1.0 {
+        //     x_pos = (room.position.0 * spacing) + 0.2;
+        //     y_pos = (room.position.1 * spacing) - (cube_size.x / 2.0 * spacing );
+        //     z_pos = (room.position.2 * spacing) - (cube_size.x / 2.0 * spacing );
+        // } else if room.dimensions.2 > 1.0 {
+        //     x_pos = (room.position.0 * spacing) - (cube_size.x / 2.0 * spacing );
+        //     y_pos = (room.position.1 * spacing) - (cube_size.x / 2.0 * spacing );
+        //     z_pos = (room.position.2 * spacing) + 0.2;
+        // } else {
+        //     x_pos = (room.position.0 * spacing) - (cube_size.x / 2.0 * spacing );
+        //     y_pos = (room.position.1 * spacing) - (cube_size.x / 2.0 * spacing );
+        //     z_pos = (room.position.2 * spacing) - (cube_size.x / 2.0 * spacing );
+        // }
+
+
+
+        // commands.spawn((
+        //     PbrBundle {
+        //         mesh: meshes.add(Cuboid::from_size(vec3(cube_size.x, cube_size.y, cube_size.z))), // Use Cuboid if needed
+        //         material: materials.add(Color::rgb(room.color[0], room.color[1], room.color[2])), // Adjust color as needed
+        //         transform: Transform::from_xyz(x_pos, y_pos, z_pos),
+        //         ..default()
+        //     },
+        // )); 
     }
 
 
