@@ -1,63 +1,52 @@
 
-use std::path::Component;
 
-use bevy::{math::vec3, prelude::*};
-use bevy_flycam::prelude::*;
+use std::iter::once;
+
 use bevy::{
-    core_pipeline::{
-        core_3d::graph::{Core3d, Node3d},
-        fullscreen_vertex_shader::fullscreen_shader_vertex_state,
-    },
-    ecs::query::QueryItem,
-    prelude::*,
-    render::{
-        extract_component::{
-            ComponentUniforms, ExtractComponent, ExtractComponentPlugin, UniformComponentPlugin,
-        },
-        render_graph::{
-            NodeRunError, RenderGraphApp, RenderGraphContext, RenderLabel, ViewNode, ViewNodeRunner,
-        },
-        render_resource::{
-            binding_types::{sampler, texture_2d, uniform_buffer},
-            *,
-        },
-        
-        camera::RenderTarget,
-        renderer::{RenderContext, RenderDevice},
-        texture::BevyDefault,
-        view::ViewTarget,
-        RenderApp,
-    },
-    window::WindowRef,
+    ecs::system::{Command, RunSystemOnce, SystemId},
+    math::vec3, 
+    prelude::*, transform::TransformSystem,
 };
+use bevy_flycam::prelude::*;
 use map::{Room, Rotation};
-
-use std::collections::HashSet;
-use std::hash::{Hash, Hasher};
 use iyes_perf_ui::prelude::*;
 
+
+
+
 mod map;
-// use map::Room;
+mod postprocessing;
 
 
 
 
 
-#[derive(Component, Default, Clone, Copy, ExtractComponent, ShaderType)]
-struct PostProcessSettings {
-    intensity: f32,
-    sigma1: f32,
-    tau: f32,
-    gfact: f32,
-    epsilon: f32,
-    num_gvf_iterations: i32,
-    enable_xdog: u32,
+#[derive(Component)]
+struct KeyboardInput;
+
+#[derive(Component)]
+struct Rotates;
+
+#[derive(Component)]
+struct MapRoom;
+
+#[derive(Component)]
+struct MainCamera;
+
+#[derive(Component)]
+struct SecondCamera;
+
+#[derive(Resource)]
+enum ActiveCamera {
+    Primary,
+    Secondary
 }
 
+#[derive(Component)]
+struct MapParent;
 
-
-
-
+#[derive(Component)]
+struct CameraRef;
 
 
 
@@ -67,7 +56,8 @@ fn main() {
             primary_window: Some(Window {
                 title: "oxy beta".into(),
                 name: Some("bevy.app".into()),
-                resolution: (1920., 1080.).into(),
+                // resolution: (1920., 1080.).into(),
+                resolution: (852., 480.).into(),
                 prevent_default_event_handling: false,
                 enabled_buttons: bevy::window::EnabledButtons {
                     maximize: false,
@@ -76,7 +66,7 @@ fn main() {
                 ..default()
             }),
             ..default()
-        }), PostProcessPlugin, NoCameraPlayerPlugin))
+        }), postprocessing::PostProcessPlugin, NoCameraPlayerPlugin))
         .add_plugins(bevy::diagnostic::FrameTimeDiagnosticsPlugin)
         .add_plugins(bevy::diagnostic::EntityCountDiagnosticsPlugin)
         .add_plugins(bevy::diagnostic::SystemInformationDiagnosticsPlugin)
@@ -92,116 +82,84 @@ fn main() {
         })
         .insert_resource(ActiveCamera::Primary)
         .add_systems(Startup, setup)
-        .add_systems(Update, (rotate, update_settings, keyboard_input, switch_cameras))
-        // .add_event::<PrintMessageEvent>() // Add the Events resource
-        // .add_systems(Update, (receive_event_system))
-
+        .add_systems(Update, (
+            rotate_map,
+            // rotate,
+            update_settings,
+            keyboard_input,
+            switch_cameras,
+        ))
+        // .add_systems(PostUpdate,(.after(TransformSystem::TransformPropagate)))
         .run();
 }
 
-
-
-// #[derive(Event)]
-// struct PrintMessageEvent {
-//     entity: Entity,
-//     commands: &Commands,
-// }
-
-
-// fn send_event_system(mut events: EventWriter<PrintMessageEvent>) {
-//     events.send(PrintMessageEvent("Hello from Bevy!".to_string()));
-// }
-
-// fn receive_event_system(
-//     mut events: EventReader<PrintMessageEvent>
-// ) {
-//     for event in events.read() {
-//         println!("Received message: {:?}", event.0);
-//     }
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#[derive(Component)]
-struct MainCamera;
-
-#[derive(Component)]
-struct SecondCamera;
-
-#[derive(Resource)]
-enum ActiveCamera {
-    Primary,
-    Secondary
+// #[derive(Component)]
+fn spawn_new_map(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>
+) {
+    println!("SPAWNING NEW MAP");
+    let mut new_rooms = map::generate_map(5);
+    spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &mut new_rooms);
 }
 
-
+//                                                                      SETUP
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
 
-        // main camera
-        commands.spawn((
-            Camera3dBundle {
-                transform: Transform::from_translation(Vec3::new(0.0, 2.0, 5.0))
-                    .looking_at(Vec3::default(), Vec3::Y),
-                camera: Camera {
-                    clear_color: Color::WHITE.into(),
-                    // target: RenderTarget::Window(WindowRef::Primary),
-                    order: 1,
-                    is_active: true,
-                    ..default()
-                },
-                ..default()
-            },
-            PostProcessSettings {
-                intensity: 0.02,
-                sigma1: 8.0,
-                tau: 0.01,
-                gfact: 8.0,
-                epsilon: 0.0001,
-                num_gvf_iterations: 15,
-                enable_xdog: 1,
-            },
-            FlyCam,
-        )).insert(MainCamera);
-    
-        // frame times
-        commands.spawn(PerfUiCompleteBundle::default());
-    
-        // second camera
-        commands.spawn((
-            Camera3dBundle {
-                transform: Transform::from_translation(Vec3::new(0.0, 0.0, 4.0))
-                    .looking_at(Vec3::default(), Vec3::Y),
-                camera: Camera {
-                    clear_color: Color::WHITE.into(),
-                    order: 0,
-                    is_active: false,
-                    ..default()
-    
-                },
-                ..default()
-            },
-        )).insert(SecondCamera);
 
-    let rooms: Vec<map::Room> = map::generate_map(3);
-    spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &rooms);
+    // main camera
+    commands.spawn((
+        Camera3dBundle {
+            transform: Transform::from_translation(Vec3::new(0.0, 2.0, 5.0))
+                .looking_at(Vec3::default(), Vec3::Y),
+            camera: Camera {
+                clear_color: Color::WHITE.into(),
+                order: 1,
+                is_active: true,
+                ..default()
+            },
+            ..default()
+        },
+        postprocessing::PostProcessSettings {
+            intensity: 0.02,
+            sigma1: 8.0,
+            tau: 0.01,
+            gfact: 8.0,
+            epsilon: 0.0001,
+            num_gvf_iterations: 15,
+            enable_xdog: 1,
+        },
+        FlyCam,
+        MainCamera,
+    ));
+
+    commands.spawn(PerfUiCompleteBundle::default());
+
+    // SECONDARY CAMERA
+    commands.spawn((
+        Camera3dBundle {
+            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 4.0))
+                .looking_at(Vec3::default(), Vec3::Y),
+            projection: Projection::Orthographic(OrthographicProjection { scale: 0.005, ..Default::default()}),
+            camera: Camera {
+                clear_color: Color::BLACK.into(),
+                order: 0,
+                is_active: false,
+                ..default()
+
+            },
+            ..default()
+        },
+        SecondCamera
+    ));
+
+    let mut rooms: Vec<map::Room> = map::generate_map(3);
+    spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &mut rooms);
 
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
@@ -213,72 +171,41 @@ fn setup(
 }
 
 
+fn update_settings(mut settings: Query<&mut postprocessing::PostProcessSettings>, time: Res<Time>) {
+    for mut setting in &mut settings {
+        let mut intensity = (time.elapsed_seconds() * 3.0).sin();
+        intensity = intensity.sin();
+        intensity = intensity * 0.5 + 0.5;
+        intensity *= 0.005;
 
-fn calculate_offset(dimentions: (usize, usize, usize)) -> (f32, f32, f32) {
-    (dimentions.0 as f32 / 2.0, dimentions.1 as f32, dimentions.2 as f32 / 2.0,)
-}
-
-#[derive(Component)]
-struct MapRoom;
-
-fn spawn_cubes_from_matrix(
-    commands: &mut Commands,
-    meshes: &mut ResMut<Assets<Mesh>>,
-    materials: &mut ResMut<Assets<StandardMaterial>>,
-    rooms: &Vec<map::Room>,
-) {
-
-    for room in rooms {
-        let (dx, dy, dz) = room.dimensions;
-        if let Some((x, y, z)) = room.position {
-
-            let offset = calculate_offset((dx as usize, dy as usize, dz as usize));
-            let from_origin = 5.0;
-            let spacing = 1.0;
-
-            let px = ((x as f32 * spacing) - offset.0) - (from_origin - 0.5);
-            let py = ((y as f32 * spacing) - offset.1) - (from_origin - 1.0);
-            let pz = ((z as f32 * spacing) - offset.2) - (from_origin - 0.0);
-
-            let mut transform = Transform::from_xyz(px, py, pz);
-
-            transform.rotation = match room.rotation {
-                Rotation::None => Quat::IDENTITY,
-            };
-
-            println!("{:?}", transform.rotation);
-
-            commands.spawn((
-                PbrBundle {
-                    mesh: meshes.add(Cuboid::from_size(vec3(dx as f32, dy as f32, dz as f32))), // Use Cuboid if needed
-                    material: materials.add(Color::rgba(room.color[0], room.color[1], room.color[2], room.color[3])), // Adjust color as needed
-                    transform,
-                    ..default()
-                },
-                MapRoom
-            )); 
-        }
+        setting.intensity = intensity;
     }
 }
 
-
-
+//                                                              SWITCH CAMERAS
 fn switch_cameras(
     mut active_camera: ResMut<ActiveCamera>,
-    mut main_camera: Query<&mut Camera, With<MainCamera>>, 
-    mut secondary_camera: Query<&mut Camera, Without<MainCamera>>, 
+    mut main_camera: Query<(Entity, &mut Camera), With<MainCamera>>, 
+    mut secondary_camera: Query<&mut Camera, Without<MainCamera>>,
+    // mut camera_entity: Query< With<MainCamera>>,
+    mut commands: Commands,
 ) {
 
     // set main camera
-    for mut camera in main_camera.iter_mut() {
+    for (entity, mut camera) in main_camera.iter_mut() {
         match *active_camera {
             ActiveCamera::Primary => {
                 camera.is_active = true;
+                commands.entity(entity).insert(FlyCam);
             },
             ActiveCamera::Secondary => {
                 camera.is_active = false;
+                commands.entity(entity).remove::<FlyCam>();
             },
         }
+
+
+        
     }
 
     // set other cameras
@@ -295,11 +222,104 @@ fn switch_cameras(
 
 }
 
+fn rotate_map(
+    mut map_parent: Query<&mut Transform, (With<MapParent>, Without<MainCamera>)>,
+    camera: Query<(&Transform), (With<MainCamera>)>
+) {
 
-// mut secondary_camera: Query<&mut Camera, Without<MainCamera>>
+    let mut r: Quat = Quat::default();
+    for transform in camera.iter() {
+        r = transform.rotation;
+    }
 
-#[derive(Component)]
-struct Rotates; // ROTATES
+    for mut parent in map_parent.iter_mut() {
+        parent.rotation.y = r.y;
+    }
+}
+
+//                                                              SPAWN MAP CUBES
+fn spawn_cubes_from_matrix(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    rooms: &mut Vec<map::Room>,
+) {
+
+    let first_room = rooms.remove(0);
+    let (dx, dy, dz) = first_room.dimensions;
+    let (x, y, z) = first_room.position.unwrap();
+
+    let offset = calculate_offset((dx as usize, dy as usize, dz as usize));
+    let from_origin = 5.0;
+    let spacing = 1.0;
+
+    let px = ((x as f32 * spacing) - 1.0) - (from_origin);
+    let py = ((y as f32 * spacing)) - (from_origin);
+    let pz = ((z as f32 * spacing) - 1.0) - (from_origin);
+
+    let mut transform = Transform::from_xyz(px, py, pz);
+
+    transform.rotation = match first_room.rotation {
+        Rotation::None => Quat::IDENTITY,
+    };
+
+    println!("{:?}", transform.rotation);
+
+    let mut map: Entity = commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Cuboid::from_size(vec3((dx * 0.95), (dy * 0.95), (dz * 0.95)))), // Use Cuboid if needed
+            material: materials.add(Color::rgb(first_room.color[0], first_room.color[1], first_room.color[2])), // Adjust color as needed
+            // transform,
+            ..default()
+        },
+        MapParent,
+        MapRoom
+    )).id(); 
+
+    {
+        println!("{}", rooms.len());
+        for room in rooms {
+            let (dx, dy, dz) = room.dimensions;
+            let (x, y, z) = room.position.unwrap();
+    
+            let offset = calculate_offset((dx as usize, dy as usize, dz as usize));
+            let from_origin = 5.0;
+            let spacing = 1.0;
+    
+            let px = ((x as f32 * spacing) - offset.0 + 0.5) - (from_origin);
+            let py = ((y as f32 * spacing)) - (from_origin);
+            let pz = ((z as f32 * spacing) - offset.2 + 0.5) - (from_origin);
+    
+            let mut transform = Transform::from_xyz(px, py, pz);
+    
+            transform.rotation = match room.rotation {
+                Rotation::None => Quat::IDENTITY,
+            };
+    
+            println!("{:?}", transform.translation);
+    
+            let child = commands.spawn((
+                PbrBundle {
+                    mesh: meshes.add(Cuboid::from_size(vec3((dx * 0.95), (dy * 0.95), (dz * 0.95)))), // Use Cuboid if needed
+                    material: materials.add(Color::rgb(room.color[0], room.color[1], room.color[2])), // Adjust color as needed
+                    transform,
+                    ..default()
+                },
+                MapRoom
+            )).id(); 
+    
+            commands.entity(map).add_child(child);
+        }
+    }
+    
+}
+
+fn calculate_offset(dimentions: (usize, usize, usize)) -> (f32, f32, f32) {
+    (dimentions.0 as f32 / 2.0, dimentions.1 as f32 / 2.0, dimentions.2 as f32 / 2.0,)
+}
+
+// (offset.0, offset.1, offset.2)
+
 
 fn rotate(time: Res<Time>, mut query: Query<&mut Transform, With<Rotates>>) {
     for mut transform in &mut query {
@@ -308,15 +328,14 @@ fn rotate(time: Res<Time>, mut query: Query<&mut Transform, With<Rotates>>) {
     }
 }
 
-
-#[derive(Component)]
-struct KeyboardInput;
-
+//                                                          KEYBOARD INPUTS
 fn keyboard_input(
     input: Res<ButtonInput<KeyCode>>,
     mut active_camera: ResMut<ActiveCamera>,
     mut commands: Commands,
-    maprooms: Query<Entity, With<MapRoom>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    map: Query<Entity, With<MapParent>>,
 ) {
     if input.just_pressed(KeyCode::KeyW) {
         info!("'W' currently pressed");
@@ -341,9 +360,10 @@ fn keyboard_input(
     }
     if input.just_pressed(KeyCode::KeyF) {
         info!("'F' just released");
-        for room in maprooms.iter() {
-            commands.entity(room).despawn();
+        for entity in map.iter() {
+            commands.entity(entity).despawn_recursive();
         }
+        spawn_new_map(commands, meshes, materials);
     }
     if input.just_pressed(KeyCode::KeyE) {
         info!("'E' just released");
@@ -360,194 +380,25 @@ fn keyboard_input(
 }
 
 
-fn update_settings(mut settings: Query<&mut PostProcessSettings>, time: Res<Time>) {
-    for mut setting in &mut settings {
-        let mut intensity = time.elapsed_seconds().sin();
-        intensity = intensity.sin();
-        intensity = intensity * 0.5 + 0.5;
-        intensity *= 0.005;
-
-        setting.intensity = intensity;
-    }
-}
 
 
 
 
 
-struct PostProcessPlugin; // POST-PROCESS PLUGIN
-
-impl Plugin for PostProcessPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_plugins((
-            ExtractComponentPlugin::<PostProcessSettings>::default(),
-            UniformComponentPlugin::<PostProcessSettings>::default(),
-        ));
-
-        let Ok(render_app) = app.get_sub_app_mut(RenderApp) else {
-            return;
-        };
-
-        render_app
-            .add_render_graph_node::<ViewNodeRunner<PostProcessNode>>(
-                Core3d,
-                PostProcessLabel,
-            )
-            .add_render_graph_edges(
-                Core3d,
-                (
-                    Node3d::Tonemapping,
-                    PostProcessLabel,
-                    Node3d::EndMainPassPostProcessing,
-                ),
-            );
-    }
-
-    fn finish(&self, app: &mut App) {
-        let Ok(render_app) = app.get_sub_app_mut(RenderApp) else {
-            return;
-        };
-
-        render_app
-            .init_resource::<PostProcessPipeline>();
-    }
-}
 
 
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone, RenderLabel)]
-struct PostProcessLabel; // POST-PROCESS LABEL
 
 
 
-#[derive(Resource)]
-struct PostProcessPipeline {
-    layout: BindGroupLayout,
-    sampler: Sampler,
-    pipeline_id: CachedRenderPipelineId,
-}
-
-impl FromWorld for PostProcessPipeline {
-    fn from_world(world: &mut World) -> Self {
-        let render_device = world.resource::<RenderDevice>();
-        let layout = render_device.create_bind_group_layout(
-            "post_process_bind_group_layout",
-            &BindGroupLayoutEntries::sequential(
-                ShaderStages::FRAGMENT,
-                (
-                    texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::Filtering),
-                    uniform_buffer::<PostProcessSettings>(false),
-                ),
-            ),
-        );
-
-        let sampler = render_device.create_sampler(&SamplerDescriptor::default());
-
-        let shader = world
-            .resource::<AssetServer>()
-            .load("shaders\\post_processing.wgsl");
-
-        let pipeline_id = world
-            .resource_mut::<PipelineCache>()
-            .queue_render_pipeline(RenderPipelineDescriptor {
-                label: Some("post_process_pipeline".into()),
-                layout: vec![layout.clone()],
-                vertex: fullscreen_shader_vertex_state(),
-                fragment: Some(FragmentState {
-                    shader,
-                    shader_defs: vec![],
-                    entry_point: "fragment".into(),
-                    targets: vec![Some(ColorTargetState {
-                        format: TextureFormat::bevy_default(),
-                        blend: None,
-                        write_mask: ColorWrites::ALL,
-                    })],
-                }),
-                primitive: PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: MultisampleState::default(),
-                push_constant_ranges: vec![],
-            });
-
-        Self {
-            layout,
-            sampler,
-            pipeline_id,
-        }
-    }
-}
 
 
 
-#[derive(Default)]
-struct PostProcessNode;
 
 
-impl ViewNode for PostProcessNode {
-    type ViewQuery = (
-        &'static ViewTarget,
-        &'static PostProcessSettings,
-    );
 
-    fn run(
-        &self,
-        _graph: &mut RenderGraphContext,
-        render_context: &mut RenderContext,
-        (view_target, _post_process_settings): QueryItem<Self::ViewQuery>,
-        world: &World,
-    ) -> Result<(), NodeRunError> {
-        let post_process_pipeline = world.resource::<PostProcessPipeline>();
-        let pipeline_cache = world.resource::<PipelineCache>();
 
-        let Some(pipeline) = pipeline_cache.get_render_pipeline(post_process_pipeline.pipeline_id)
-        else {
-            return Ok(());
-        };
 
-        let settings_uniforms = world.resource::<ComponentUniforms<PostProcessSettings>>();
-        let Some(settings_binding) = settings_uniforms.uniforms().binding() else {
-            return Ok(());
-        };
-
-        // This will start a new "post process write", obtaining two texture
-        // views from the view target - a `source` and a `destination`.
-        // `source` is the "current" main texture and you _must_ write into
-        // `destination` because calling `post_process_write()` on the
-        // [`ViewTarget`] will internally flip the [`ViewTarget`]'s main
-        // texture to the `destination` texture. Failing to do so will cause
-        // the current main texture information to be lost.
-        let post_process = view_target.post_process_write();
-
-        let bind_group = render_context.render_device().create_bind_group(
-            "post_process_bind_group",
-            &post_process_pipeline.layout,
-            &BindGroupEntries::sequential((
-                post_process.source,
-                &post_process_pipeline.sampler,
-                settings_binding.clone(),
-            )),
-        );
-
-        let mut render_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
-            label: Some("post_process_pass"),
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: post_process.destination,
-                resolve_target: None,
-                ops: Operations::default(),
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            occlusion_query_set: None,
-        });
-
-        render_pass.set_render_pipeline(pipeline);
-        render_pass.set_bind_group(0, &bind_group, &[]);
-        render_pass.draw(0..3, 0..1);
-
-        Ok(())
-    }
-}
 
 
 

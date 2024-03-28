@@ -1,4 +1,5 @@
-use bevy::math::Vec4;
+use bevy::prelude::*;
+use bevy::transform::commands;
 use rand::prelude::*;
 use std::fmt;
 use std::cmp::max;
@@ -44,6 +45,22 @@ enum States {
 
 type Cube = [[[Option<Room>; 10]; 10]; 10];
 type Map = [[[Option<States>; 10]; 10]; 10];
+
+
+
+// pub struct MapGenerator;
+
+// impl Plugin for MapGenerator {
+//     fn build(
+//         &self, 
+//         app: &mut App,
+//         commands: &mut Commands,
+//     ) {
+        
+//     }
+// }
+
+
 
 pub fn generate_map(n: usize) -> Vec<Room> {
     let rooms = populate_rooms(n);
@@ -249,25 +266,6 @@ fn calculate_connections(room: &Room, cube: &mut Cube, possible_places: &mut Map
 
 }
 
-// fn all_coords(xs: Vec<usize>, ys: Vec<usize>, zs: Vec<usize>, occupied_coords: Vec<(usize, usize, usize)>, size: &usize) -> Vec<(usize, usize, usize)> {
-//     let mut all_coordinates = Vec::new();
-
-    
-
-//     for x in xs.iter() {
-//         for y in ys.iter() {
-//             for z in zs.iter() {
-//                 if !occupied_coords.contains(&(*x, *y, *z)) && x < size && y < size && z < size {
-//                     println!("x {} y {} z {}", x, y, z);
-//                     all_coordinates.push((*x, *y, *z));
-//                 }
-//             }
-//         }
-//     }
-
-//     all_coordinates
-// }
-
 fn populate_rooms(n: usize) -> Vec<Room> {
     let mut possible_places: Map = Default::default();
     let mut cube: Cube = Default::default();
@@ -318,10 +316,10 @@ fn populate_rooms(n: usize) -> Vec<Room> {
 
         let color: [f32; 4] = match room_type {
             RoomType::Cube => [1.0, 0.3, 0.8, 1.0],
-            RoomType::R1 => [1.0, 0.1, 0.1, 1.0],
-            RoomType::R2 => [1.0, 0.1, 0.1, 1.0],
-            RoomType::R3 => [1.0, 0.1, 0.1, 1.0],
-            RoomType::R4 => [1.0, 0.1, 0.1, 1.0],
+            RoomType::R1 => [0.0, 0.2, 1.0, 1.0],
+            RoomType::R2 => [0.0, 0.2, 1.0, 1.0],
+            RoomType::R3 => [0.0, 0.2, 1.0, 1.0],
+            RoomType::R4 => [0.0, 0.2, 1.0, 1.0],
         };
 
         let new_room = Room {
@@ -362,13 +360,10 @@ fn populate_rooms(n: usize) -> Vec<Room> {
         room_type: RoomType::Cube,
         dimensions: (1.0, 1.0, 1.0),
         position,
-        color: [1.0, 1.0, 0.0, 1.0],
+        color: [1.0, 1.0, 0.1, 1.0],
         rotation: Rotation::None,
     };
 
-    // let occupied_cells = get_occupied_cells(&seed_room);
-
-    // calculate_connections(&end_room, &mut cube, &mut possible_places, occupied_cells);
     rooms.push(end_room);
 
 
@@ -377,193 +372,6 @@ fn populate_rooms(n: usize) -> Vec<Room> {
 }
 
 
-// ... other code remains the same
-
-// fn generate_rooms(weights: &HashMap<RoomType, usize>, num_rooms: usize, cube: &mut Cube) -> Vec<Room> {
-//     let mut rooms = Vec::new();
-//     let mut rng = thread_rng(); // Create a thread-local random number generator
-
-//     let mut rooms_to_go = num_rooms;
-//     let total_weight: usize = weights.values().sum(); // Sum of all weights
-
-//     while rooms_to_go > 0 {
-        
-//         let rand_val = rng.gen_range(0..total_weight); // Value for weighted selection
-//         let mut cumulative_weight = 0;
-//         // let rotation = match rng.gen_range(0..1) {
-//         //     0 => Rotation::None,
-//         //     // 1 => Rotation::Rot90,
-//         //     _ => unreachable!(),
-//         // };
-
-//         // Find matching type based on weight
-//         for (room_type, weight) in weights {
-//             cumulative_weight += weight;
-//             if rand_val < cumulative_weight {
-//                 let dimensions: (isize, isize, isize) = match room_type {
-//                     RoomType::Cube => (1, 1, 1),
-//                     RoomType::R1 => (1, 1, 2),
-//                     RoomType::R2 => (-2, 1, 1),
-//                     RoomType::R3 => (1, 1, -2),
-//                     RoomType::R4 => (2, 1, 1),
-//                 };
-//                 let mut temp_room = Room {
-//                     room_type: room_type.clone(),
-//                     dimensions,
-//                     position: None,
-//                     color: [0.2, 1.0, 0.2, 1.0],
-//                     rotation: Rotation::None,
-//                 };
-
-//                 let r = place_room(&temp_room, cube);
-//                 if r == None {
-                    
-//                 } else {
-//                     temp_room.position = r;
-//                     rooms_to_go -= 1;
-//                 };
-//                 print_room(temp_room);
-//                 rooms.push(temp_room);
-//                 break;
-//             }
-//         }
-//     }
-
-
-//     rooms
-// }
-
-
-
-// fn place_room(room: &Room, cube: &mut Cube) -> Option<(usize, usize, usize)> {
-//     let mut rng = rand::thread_rng();
-//     let rand_axis = rng.gen_range(0..6);
-//     let (dim_x, dim_y, dim_z) = room.dimensions;
-
-//     let start: isize = (cube.len() / 2) as isize;
-
-    // if rand_axis == 0 {
-    //     for x in start..(start*2) {
-    //         for y in start..(start*2) {
-    //             for z in start..(start*2) {
-    //                 let mut cells = get_occupied_cells(&room, (x, y, z)); 
-    //                 if check_occupied_cells(&room, cube, &mut cells) {
-    //                     return Some((x as usize, y as usize, z as usize)); 
-    //                 }
-    //             }
-    //         }
-    //     }
-    // } else if rand_axis == 1 {
-    //     for z in start..(start*2) {
-    //         for x in start..(start*2) {
-    //             for y in start..(start*2) {
-    //                 let mut cells = get_occupied_cells(&room, (x, y, z)); 
-    //                 if check_occupied_cells(&room, cube, &mut cells) {
-    //                     return Some((x as usize, y as usize, z as usize)); 
-    //                 }
-    //             }
-    //         }
-    //     }
-    // } else if rand_axis == 2 {
-    //     for y in start..(start*2) {
-    //         for z in start..(start*2) {
-    //             for x in start..(start*2) {
-    //                 let mut cells = get_occupied_cells(&room, (x, y, z)); 
-    //                 if check_occupied_cells(&room, cube, &mut cells) {
-    //                     return Some((x as usize, y as usize, z as usize)); 
-    //                 }
-    //             }
-    //         }
-    //     }
-    // } else if rand_axis == 3 {
-    //     for x in (0..start).rev() {
-    //         for y in (0..start).rev() {
-    //             for z in (0..start).rev() {
-    //                 let mut cells = get_occupied_cells(&room, (x, y, z)); 
-    //                 if check_occupied_cells(&room, cube, &mut cells) {
-    //                     return Some((x as usize, y as usize, z as usize)); 
-    //                 }
-    //             }
-    //         }
-    //     }
-    // } else if rand_axis == 4 {
-    //     for z in (0..start).rev() {
-    //         for x in (0..start).rev() {
-    //             for y in (0..start).rev() {
-    //                 let mut cells = get_occupied_cells(&room, (x, y, z)); 
-    //                 if check_occupied_cells(&room, cube, &mut cells) {
-    //                     return Some((x as usize, y as usize, z as usize)); 
-    //                 }
-    //             }
-    //         }
-    //     }
-    // } else if rand_axis == 5 {
-    //     for y in (0..start).rev() {
-    //         for z in (0..start).rev() {
-    //             for x in (0..start).rev() {
-    //                 let mut cells = get_occupied_cells(&room, (x, y, z)); 
-    //                 if check_occupied_cells(&room, cube, &mut cells) {
-    //                     return Some((x as usize, y as usize, z as usize)); 
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
- // No valid placement found
-//     return None;
-// }
-
-// fn check_valid_placement(room: &Room, cube: &Cube, x: usize, y: usize, z: usize) -> bool {
-//     let (dim_x, dim_y, dim_z) = room.dimensions;
-
-//     let xb = x as isize;
-//     let yb = y as isize;
-//     let zb = z as isize;
-
-//     let size = cube.len() as isize;
-    
-//     // Check bounds and if cells are occupied
-//     for i in xb..xb + dim_x {
-//         for j in yb..yb + dim_y {
-//             for k in zb..zb + dim_z {
-//                 if i < 0 || j < 0 || k < 0 {
-//                     return false;
-//                 } else if i >= size || j >= size || k >= size {
-//                     return false; 
-//                 } else if cube[i as usize][j as usize][k as usize].is_some() {
-//                     return false;
-//                 }
-//             }
-//         }
-//     }
-
-//     true 
-// }
-
-
-// fn fill_new_cells(room: &Room, cube: &mut Cube, cells: Vec<(usize, usize, usize)>) {
-//     for cell in cells {
-//         cube[cell.0][cell.1][cell.2] = Some(room.clone()); 
-//     }
-// }
-
-// fn check_occupied_cells(room: &Room, cube: &mut Cube, cells: &mut Vec<(usize, usize, usize)>) -> bool {
-//     let mut valid = true;
-//     for cell in cells.iter_mut() {
-//         if cube[cell.0][cell.1][cell.2].is_some() {
-//             valid = false;
-//         }
-//     }
-
-//     if valid {
-//         for cell in cells {
-//             cube[cell.0][cell.1][cell.2] = Some(room.clone());
-//         }
-//     }
-
-//     valid
-// }
 
 fn get_occupied_cells(room: &Room) -> Vec<(usize, usize, usize)> {
     // let (x, y, z) = room.position.unwrap();
@@ -573,12 +381,6 @@ fn get_occupied_cells(room: &Room) -> Vec<(usize, usize, usize)> {
     let z = p.2;
     let (mut dx, mut dy, mut dz) = room.dimensions;
 
-    // match room.rotation {
-    //     Rotation::Rot90 => { std::mem::swap(&mut dx, &mut dy)},
-    //     // Rotation::Rot180 => { std::mem::swap(&mut dx, &mut dz)},
-    //     // Rotation::Rot270 => { std::mem::swap(&mut dy, &mut dz)},
-    //     _ => {}
-    // };
     let mut cells = Vec::new();
 
     match room.room_type {
@@ -604,294 +406,8 @@ fn get_occupied_cells(room: &Room) -> Vec<(usize, usize, usize)> {
     }
 
 
-
-
-    // for i in x..x + dx {
-    //     for j in y..y + dy {
-    //         for k in z..z + dz {
-    //             cells.push(((i as usize), (j as usize), (k as usize)));
-    //             // println!("CELL: {}, {}, {}", x+i, y+j, z+k);
-    //         }
-    //     }
-    // }
-
     println!("number of cells: {}", cells.len());
     cells
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// #[derive(Debug, Clone, PartialEq)]
-// pub enum CellType {
-//     Empty,
-//     Room,
-//     DeadEnd,
-//     Start,
-// }
-
-// impl fmt::Display for CellType {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(
-//             f,
-//             "{}",
-//             match self {
-//                 Self::Empty=>"⬛",
-//                 Self::Room=>"🟩",
-//                 Self::DeadEnd=>"🟨",
-//                 Self::Start=>"🟦",
-//             }
-//         )
-//     }
-// }
-
-// #[derive(Clone, Copy)]
-// pub struct Room {
-//     pub position: (f32, f32, f32),
-//     pub dimensions: (f32, f32, f32),
-//     pub color: [f32; 4], // RGBA color for now (assuming no textures)
-// }
-
-// impl PartialEq for Room {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.position == other.position // Assuming rooms are uniquely identified by position
-//     }
-// }
-
-// impl Eq for Room {} // Required if you implement PartialEq
-
-// impl Hash for Room {
-//     fn hash<H: Hasher>(&self, state: &mut H) {
-//         (self.position.0 as i32).hash(state); 
-//         (self.position.1 as i32).hash(state); 
-//         (self.position.2 as i32).hash(state); 
-//     }
-// }
-
-
-// fn check_for_bulk(matrix: &[Vec<Vec<CellType>>], x: usize, y: usize, z: usize, n: usize) -> bool {
-//     let mut count = 0;
-//     let x_min = max(0, x as isize - 1) as usize;
-//     let x_max = min(n - 1, x + 1);
-//     let y_min = max(0, y as isize - 1) as usize;
-//     let y_max = min(n - 1, y + 1);
-//     let z_min = max(0, z as isize - 1) as usize;
-//     let z_max = min(n - 1, z + 1);
-
-
-//     for i in x_min..=x_max {
-//         for j in y_min..=y_max {
-//             for k in z_min..=z_max { 
-//                 if matrix[i][j][k] == CellType::Room {
-//                     count += 1;
-//                     if count > 3 { 
-//                         return false;
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     true
-// }
-
-// fn check_for_dead_end(matrix: &[Vec<Vec<CellType>>], x: usize, y: usize, z: usize, n: usize) -> bool {
-//     let mut count = 0;
-//     if x > 0 && matrix[x - 1][y][z] != CellType::Empty { count += 1; }
-//     if y > 0 && matrix[x][y - 1][z] != CellType::Empty { count += 1; }
-//     if z > 0 && matrix[x][y][z - 1] != CellType::Empty { count += 1; }
-//     if x < n - 1 && matrix[x + 1][y][z] != CellType::Empty { count += 1; }
-//     if y < n - 1 && matrix[x][y + 1][z] != CellType::Empty { count += 1; }
-//     if z < n - 1 && matrix[x][y][z + 1] != CellType::Empty { count += 1; }
-
-//     count == 1 // Potential dead end
-// }
-
-// fn weighted_rand(weights: &[usize]) -> usize {
-//     let mut rng = thread_rng();
-//     let total_weight: usize = weights.iter().sum(); // Calculate the sum of weights
-//     let dist = WeightedIndex::new(weights).unwrap(); 
-//     dist.sample(&mut rng)
-// }
-
-// pub fn create_matrix(n: usize) -> HashSet<Room> {
-//     let mut matrix: Vec<Vec<Vec<CellType>>> = vec![vec![vec![CellType::Empty; n]; n]; n];
-
-//     let mut rooms_to_go = (n as f32 * 1.5 - 1.0) as usize;
-//     let mut rng = thread_rng();
-
-//     let sx = rng.gen_range(0..n);
-//     let sy = rng.gen_range(0..n);
-//     let sz = n / 2; // Start approximately in the middle vertically
-//     matrix[sx][sy][sz] = CellType::Start;
-
-//     // Use a HashSet of Room structs
-//     let mut room_list: HashSet<Room> = HashSet::new(); 
-//     room_list.insert(Room {
-//          position: (sx as f32, sy as f32, sz as f32),
-//          dimensions: (1.0, 1.0, 1.0), 
-//          color: [0.2, 1.0, 0.2, 1.0], // Example color
-//     });
-
-//     while rooms_to_go > 0 {
-//         let mut room = *room_list.iter().choose(&mut rng).unwrap();
-
-//         let room_x = room.position.0 as usize;
-//         let room_y = room.position.1 as usize;
-//         let room_z = room.position.2 as usize;
-
-//         let direction_weights = [2, 2, 1, 1, 2, 2]; // More weight for horizontal directions
-//         let direction = weighted_rand(&direction_weights);
-//         let new_x = room_x.saturating_sub(if direction == 0 { 1 } else { 0 });
-//         let new_y = room_y.saturating_sub(if direction == 3 { 1 } else { 0 });
-//         let new_z = room_z.saturating_sub(if direction == 5 { 1 } else { 0 });
-
-//         if new_x >= 0 && new_y >= 0 && new_z >= 0 &&  new_x < n && new_y < n && new_z < n && matrix[new_x][new_y][new_z] == CellType::Empty {
-//             if check_for_bulk(&matrix, new_x, new_y, new_z, n) {
-
-//                 // Standard room placement
-//                 if !rng.gen_bool(0.3) { // 70% chance of a standard room 
-//                     matrix[new_x][new_y][new_z] = CellType::Room; 
-
-//                     let new_room = Room {
-//                         position: (new_x as f32, new_y as f32, new_z as f32),
-//                         dimensions: (1.0, 1.0, 1.0), 
-//                         color: [0.8, 0.8, 0.8, 1.0], 
-//                     };
-//                     room_list.insert(new_room); 
-//                     rooms_to_go -= 1;
-//                 } else { // 30% chance to create a larger room
-//                         // Decide on horizontal or vertical extension
-//                     let extend_horizontal = rng.gen_bool(0.5);
-//                     let temp_room = Room {
-//                         position: (new_x as f32, new_y as f32, new_z as f32),
-//                         dimensions: (0.0, 0.0, 0.0),
-//                         color: [0.0, 0.0, 0.0, 0.0]
-//                     };
-
-//                     if let Some(Room) = room_list.take(&temp_room) {
-//                         if extend_horizontal {
-//                             if new_x + 1 < n && matrix[new_x + 1][new_y][new_z] == CellType::Empty {
-//                                 matrix[new_x + 1][new_y][new_z] = CellType::Room;
-//                                 room.dimensions.0 += 1.0;
-//                             }
-//                         } else {
-//                             if new_z + 1 < n && matrix[new_x][new_y][new_z + 1] == CellType::Empty {
-//                                 matrix[new_x][new_y][new_z + 1] = CellType::Room;
-//                                 room.dimensions.2 += 1.0;
-//                             }
-//                         }
-//                         room_list.insert(room);
-//                     } else {
-//                         let new_room = Room {
-//                             position: (new_x as f32, new_y as f32, new_z as f32),
-//                             dimensions: if extend_horizontal {
-//                                 (2.0, 1.0, 1.0)
-//                             } else {
-//                                 (1.0, 1.0, 2.0)
-//                             },
-//                             color: [0.8, 0.8, 0.3, 1.0],
-//                         };
-//                         room_list.insert(new_room);
-//                     }
-
-//                 }
-//             }
-//         }
-//     }
-
-//     // Dead-end detection and filtering
-//     for x in 0..n {
-//         for y in 0..n {
-//             for z in 0..n { 
-//                 if check_for_dead_end(&matrix, x, y, z, n) && matrix[x][y][z] == CellType::Room {
-//                     matrix[x][y][z] = CellType::DeadEnd;
-//                 }
-//             }
-//         }
-//     }
-
-    
-//     // Restart if conditions are not met
-//     if  check_total_fills(&matrix) == n && check_total_dead_ends(&matrix) >= 2 {
-//         return create_matrix(n);
-//     } else {
-//         return room_list;
-//     }
-//         // return matrix;
-// }
-
-    
-// // Helper functions to check map conditions
-// fn check_total_fills(matrix: &[Vec<Vec<CellType>>]) -> usize {
-//     let mut count = 0;
-//     for x in matrix {
-//         for y in x {
-//             for z in y {
-//                 if *z != CellType::Empty {
-//                     count += 1;
-//                 }
-//             }
-//         }
-//     }
-//     count
-// }
-
-// fn check_total_dead_ends(matrix: &[Vec<Vec<CellType>>]) -> usize {
-//     let mut count = 0;
-//     for x in matrix {
-//         for y in x {
-//             for z in y {
-//                 if *z != CellType::DeadEnd {
-//                     count += 1;
-//                 }
-//             }
-//         }
-//     }
-//     count
-// }
-
-// fn print_matrix(matrix: &[Vec<CellType>]) {
-//     for row in matrix {
-//         for cell in row {
-//             print!("{}", cell);  // Uses the Display trait implementation you defined
-//         }
-//         println!();
-//     }
-// }
-
-// // fn map() {
-// //     // let matrix = create_matrix(20);
-// //     // print_matrix(&matrix);
-// // }
