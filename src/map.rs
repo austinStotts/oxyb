@@ -1,3 +1,4 @@
+use bevy::math::Vec4;
 use rand::prelude::*;
 use std::fmt;
 use std::cmp::max;
@@ -27,8 +28,9 @@ pub enum RoomType {
 #[derive(Debug, Clone, Copy)]
 pub struct Room {
     pub room_type: RoomType,
-    pub dimensions: (isize, isize, isize),
+    pub dimensions: (f32, f32, f32),
     pub position: Option<(usize, usize, usize)>,
+    pub color: [f32; 4],
     pub rotation: Rotation,
 }
 
@@ -44,24 +46,9 @@ type Cube = [[[Option<Room>; 10]; 10]; 10];
 type Map = [[[Option<States>; 10]; 10]; 10];
 
 pub fn generate_map(n: usize) -> Vec<Room> {
-    
-    let room_weights = HashMap::from([(RoomType::Cube, 4), (RoomType::R1, 1), (RoomType::R2, 1), (RoomType::R3, 1), (RoomType::R4, 1),]);
-    // let rooms = generate_rooms(&room_weights, n, &mut cube); // Example
-    // print_matrix(&cube);
-
     let rooms = populate_rooms(n);
 
     rooms
-
-
-    // for mut room in rooms {
-    //     let room_position = place_room(&room, &mut cube);
-    //     room.position = room_position;
-    //     print_room(room)
-    // }
-
-
-    // print_rooms(&rooms);
 }
 
 
@@ -101,7 +88,8 @@ fn get_possible_connections(possible_places: &mut Map) -> Vec<(usize, usize, usi
                     Some(States::Empty) => {},
                     Some(States::Filled) => {},
                     Some(States::Connection) => {
-                        possible_connections.push((i, j, k))
+                        possible_connections.push((i, j, k));
+                        // println!("{} {} {}", i, j, k);
                     }
                     None => {},
                     
@@ -113,21 +101,23 @@ fn get_possible_connections(possible_places: &mut Map) -> Vec<(usize, usize, usi
     possible_connections
 }
 
-fn calculate_connections(room: &Room, cube: &mut Cube, possible_places: &mut Map) {
+fn calculate_connections(room: &Room, cube: &mut Cube, possible_places: &mut Map, occupied_coords: Vec<(usize, usize, usize)>) {
 
     let (x, y, z) = room.position.unwrap();
     let size = cube.len();
 
     println!("room position: {} {} {}", x, y, z);
-
+    println!("SIZE: {}", size);
     let dummy_room = Room {
         room_type: RoomType::Cube,
-        dimensions: (1, 1, 1),
+        dimensions: (1.0, 1.0, 1.0),
         position: Some((1, 1, 1,)),
+        color: [0.2, 1.0, 0.2, 1.0],
         rotation: Rotation::None,
     };
 
-    let occupied_coords = get_occupied_cells(room);
+    // let occupied_coords = get_occupied_cells(room);
+
     let occupied_coords2 = &occupied_coords.clone();
 
     match room.room_type {
@@ -140,11 +130,11 @@ fn calculate_connections(room: &Room, cube: &mut Cube, possible_places: &mut Map
                 (x, y, z+1),
                 (x, y, z-1),
             ];
-
-
-
             for coord in coords {
-                if !occupied_coords.contains(&(coord.0, coord.1, coord.2)) && coord.0 > 0 && coord.1 > 0 && coord.2 > 0 && coord.0 > size && coord.1 > size && coord.2 > size {
+                if !occupied_coords.contains(&(coord.0, coord.1, coord.2))
+                && coord.0 > 0 && coord.1 > 0 && coord.2 > 0
+                && coord.0 < size && coord.1 < size && coord.2 < size
+                {
                     possible_places[coord.0][coord.1][coord.2] = Some(States::Connection);
                     for occupied_coord in occupied_coords2 {
                         cube[occupied_coord.0][occupied_coord.1][occupied_coord.2] = Some(dummy_room);
@@ -152,9 +142,7 @@ fn calculate_connections(room: &Room, cube: &mut Cube, possible_places: &mut Map
                     }
                 }
             }
-
         }
-
         RoomType::R1 => {
             let coords: Vec<(usize, usize, usize)> = vec![
                 (x+1, y, z),
@@ -168,11 +156,10 @@ fn calculate_connections(room: &Room, cube: &mut Cube, possible_places: &mut Map
                 (x, y, z-1),
                 (x, y, z+2),
             ];
-
-
-
             for coord in coords {
-                if !occupied_coords.contains(&(coord.0, coord.1, coord.2)) && coord.0 > 0 && coord.1 > 0 && coord.2 > 0 && coord.0 > size && coord.1 > size && coord.2 > size {
+                if !occupied_coords.contains(&(coord.0, coord.1, coord.2))
+                && coord.0 > 0 && coord.1 > 0 && coord.2 > 0
+                && coord.0 < size && coord.1 < size && coord.2 < size {
                     possible_places[coord.0][coord.1][coord.2] = Some(States::Connection);
                     for occupied_coord in occupied_coords2 {
                         cube[occupied_coord.0][occupied_coord.1][occupied_coord.2] = Some(dummy_room);
@@ -183,22 +170,21 @@ fn calculate_connections(room: &Room, cube: &mut Cube, possible_places: &mut Map
         }
         RoomType::R2 => {
             let coords: Vec<(usize, usize, usize)> = vec![
-                (x+1, y, z),
-                (x-1, y, z),
                 (x, y+1, z),
                 (x, y-1, z),
-                (x+1, y, z+1),
-                (x-1, y, z+1),
-                (x, y+1, z+1),
-                (x, y-1, z+1),
+                (x, y, z+1),
                 (x, y, z-1),
-                (x, y, z+2),
+                (x-1, y+1, z),
+                (x-1, y-1, z),
+                (x-1, y, z+1),
+                (x-1, y, z+1),
+                (x+1, y, z),
+                (x-2, y, z),
             ];
-
-
-
             for coord in coords {
-                if !occupied_coords.contains(&(coord.0, coord.1, coord.2)) && coord.0 > 0 && coord.1 > 0 && coord.2 > 0 && coord.0 > size && coord.1 > size && coord.2 > size {
+                if !occupied_coords.contains(&(coord.0, coord.1, coord.2))
+                && coord.0 > 0 && coord.1 > 0 && coord.2 > 0
+                && coord.0 < size && coord.1 < size && coord.2 < size {
                     possible_places[coord.0][coord.1][coord.2] = Some(States::Connection);
                     for occupied_coord in occupied_coords2 {
                         cube[occupied_coord.0][occupied_coord.1][occupied_coord.2] = Some(dummy_room);
@@ -213,18 +199,17 @@ fn calculate_connections(room: &Room, cube: &mut Cube, possible_places: &mut Map
                 (x-1, y, z),
                 (x, y+1, z),
                 (x, y-1, z),
-                (x+1, y, z+1),
-                (x-1, y, z+1),
-                (x, y+1, z+1),
-                (x, y-1, z+1),
-                (x, y, z-1),
-                (x, y, z+2),
+                (x+1, y, z-1),
+                (x-1, y, z-1),
+                (x, y+1, z-1),
+                (x, y-1, z-1),
+                (x, y, z+1),
+                (x, y, z-2),
             ];
-
-
-
             for coord in coords {
-                if !occupied_coords.contains(&(coord.0, coord.1, coord.2)) && coord.0 > 0 && coord.1 > 0 && coord.2 > 0 && coord.0 > size && coord.1 > size && coord.2 > size {
+                if !occupied_coords.contains(&(coord.0, coord.1, coord.2))
+                && coord.0 > 0 && coord.1 > 0 && coord.2 > 0 
+                && coord.0 < size && coord.1 < size && coord.2 < size {
                     possible_places[coord.0][coord.1][coord.2] = Some(States::Connection);
                     for occupied_coord in occupied_coords2 {
                         cube[occupied_coord.0][occupied_coord.1][occupied_coord.2] = Some(dummy_room);
@@ -235,22 +220,21 @@ fn calculate_connections(room: &Room, cube: &mut Cube, possible_places: &mut Map
         }
         RoomType::R4 => {
             let coords: Vec<(usize, usize, usize)> = vec![
-                (x+1, y, z),
-                (x-1, y, z),
                 (x, y+1, z),
                 (x, y-1, z),
-                (x+1, y, z+1),
-                (x-1, y, z+1),
-                (x, y+1, z+1),
-                (x, y-1, z+1),
+                (x, y, z+1),
                 (x, y, z-1),
-                (x, y, z+2),
+                (x+1, y+1, z),
+                (x+1, y-1, z),
+                (x+1, y, z+1),
+                (x+1, y, z+1),
+                (x-1, y, z),
+                (x+2, y, z),
             ];
-
-
-
             for coord in coords {
-                if !occupied_coords.contains(&(coord.0, coord.1, coord.2)) && coord.0 > 0 && coord.1 > 0 && coord.2 > 0 && coord.0 > size && coord.1 > size && coord.2 > size {
+                if !occupied_coords.contains(&(coord.0, coord.1, coord.2))
+                && coord.0 > 0 && coord.1 > 0 && coord.2 > 0 
+                && coord.0 < size && coord.1 < size && coord.2 < size {
                     possible_places[coord.0][coord.1][coord.2] = Some(States::Connection);
                     for occupied_coord in occupied_coords2 {
                         cube[occupied_coord.0][occupied_coord.1][occupied_coord.2] = Some(dummy_room);
@@ -259,79 +243,32 @@ fn calculate_connections(room: &Room, cube: &mut Cube, possible_places: &mut Map
                 }
             }
         }
-
-
-
-
-
-
-
-
-
-
-        // _ => {
-        //     let mut xs: Vec<usize> = vec![];
-        //     let mut ys: Vec<usize> = vec![];
-        //     let mut zs: Vec<usize> = vec![];
-        
-        //     let xr1: Range<usize> = 0..(room.dimensions.0 + 1) as usize;
-        //     let yr1: Range<usize> = 0..(room.dimensions.1 + 1) as usize;
-        //     let zr1: Range<usize> = 0..(room.dimensions.2 + 1) as usize;
-        
-        //     let xr2: Range<usize> = (room.dimensions.0 + 1) as usize..0;
-        //     let yr2: Range<usize> = (room.dimensions.1 + 1) as usize..0;
-        //     let zr2: Range<usize> = (room.dimensions.2 + 1) as usize..0;
-        
-        //     let (px, py, pz) = room.position.unwrap();
-        
-        //     for x in xr1 { xs.push((px + x) as usize) }
-        //     for y in yr1 { ys.push((py + y) as usize) }
-        //     for z in zr1 { zs.push((pz + z) as usize) }
-        
-        //     for x in xr2 { xs.push((px - x) as usize) }
-        //     for y in yr2 { ys.push((py - y) as usize) }
-        //     for z in zr2 { zs.push((pz - z) as usize) }
-        
-        //     let coords = all_coords(xs, ys, zs, occupied_coords, &(cube.len() - 1));
-        //     println!("total number of coords: {}", coords.len());
-        
-        //     for coord in coords {
-        //         // if cube[coord.0][coord.1][coord.2].is_none() {
-        //         possible_places[coord.0][coord.1][coord.2] = Some(States::Connection);
-        //         // }
-        //     }
-        //     for occupied_coord in occupied_coords2 {
-        //         cube[occupied_coord.0][occupied_coord.1][occupied_coord.2] = Some(dummy_room);
-        //         possible_places[occupied_coord.0][occupied_coord.1][occupied_coord.2] = Some(States::Filled);
-        //     }
-        // }
     }
 
 
 
 }
 
-fn all_coords(xs: Vec<usize>, ys: Vec<usize>, zs: Vec<usize>, occupied_coords: Vec<(usize, usize, usize)>, size: &usize) -> Vec<(usize, usize, usize)> {
-    let mut all_coordinates = Vec::new();
+// fn all_coords(xs: Vec<usize>, ys: Vec<usize>, zs: Vec<usize>, occupied_coords: Vec<(usize, usize, usize)>, size: &usize) -> Vec<(usize, usize, usize)> {
+//     let mut all_coordinates = Vec::new();
 
     
 
-    for x in xs.iter() {
-        for y in ys.iter() {
-            for z in zs.iter() {
-                if !occupied_coords.contains(&(*x, *y, *z)) && x < size && y < size && z < size {
-                    println!("x {} y {} z {}", x, y, z);
-                    all_coordinates.push((*x, *y, *z));
-                }
-            }
-        }
-    }
+//     for x in xs.iter() {
+//         for y in ys.iter() {
+//             for z in zs.iter() {
+//                 if !occupied_coords.contains(&(*x, *y, *z)) && x < size && y < size && z < size {
+//                     println!("x {} y {} z {}", x, y, z);
+//                     all_coordinates.push((*x, *y, *z));
+//                 }
+//             }
+//         }
+//     }
 
-    all_coordinates
-}
+//     all_coordinates
+// }
 
 fn populate_rooms(n: usize) -> Vec<Room> {
-    println!("POPULATING ROOMS");
     let mut possible_places: Map = Default::default();
     let mut cube: Cube = Default::default();
     let mut rooms = Vec::new();
@@ -340,12 +277,15 @@ fn populate_rooms(n: usize) -> Vec<Room> {
 
     let seed_room = Room {
         room_type: RoomType::Cube,
-        dimensions: (1, 1, 1),
+        dimensions: (1.0, 1.0, 1.0),
         position: Some((5, 5, 5)),
+        color: [0.2, 1.0, 0.2, 1.0],
         rotation: Rotation::None,
     };
 
-    calculate_connections(&seed_room, &mut cube, &mut possible_places);
+    let occupied_cells = get_occupied_cells(&seed_room);
+
+    calculate_connections(&seed_room, &mut cube, &mut possible_places, occupied_cells);
     rooms.push(seed_room);
     cube[5][5][5] = Some(seed_room);
 
@@ -365,26 +305,71 @@ fn populate_rooms(n: usize) -> Vec<Room> {
             4 => RoomType::R4,
             _ => RoomType::R4,
         };
-    
-        let dimensions: (isize, isize, isize) = match room_type {
-            RoomType::Cube => (1, 1, 1),
-            RoomType::R1 => (1, 1, 2),
-            RoomType::R2 => (-2, 1, 1),
-            RoomType::R3 => (1, 1, -2),
-            RoomType::R4 => (2, 1, 1),
+        
+        let spacing = 0.0;
+
+        let dimensions: (f32, f32, f32) = match room_type {
+            RoomType::Cube => (1.0, 1.0, 1.0),
+            RoomType::R1 => (1.0, 1.0, 2.0+spacing),
+            RoomType::R2 => (-2.0+spacing, 1.0, 1.0),
+            RoomType::R3 => (1.0, 1.0, -2.0+spacing),
+            RoomType::R4 => (2.0+spacing, 1.0, 1.0),
+        };
+
+        let color: [f32; 4] = match room_type {
+            RoomType::Cube => [1.0, 0.3, 0.8, 1.0],
+            RoomType::R1 => [1.0, 0.1, 0.1, 1.0],
+            RoomType::R2 => [1.0, 0.1, 0.1, 1.0],
+            RoomType::R3 => [1.0, 0.1, 0.1, 1.0],
+            RoomType::R4 => [1.0, 0.1, 0.1, 1.0],
         };
 
         let new_room = Room {
             room_type,
             dimensions,
             position,
+            color,
             rotation: Rotation::None,
         };
 
-        calculate_connections(&new_room, &mut cube, &mut possible_places);
-        rooms.push(new_room);
-        rooms_to_go -= 1;
+        let new_occupied_cells = get_occupied_cells(&new_room);
+        let mut valid = true;
+        for cell in &new_occupied_cells {
+            if cube[cell.0][cell.1][cell.2].is_some() { valid = false }
+            match possible_places[cell.0][cell.1][cell.2] {
+                Some(state) => {
+                    match state {
+                        States::Connection => {},
+                        States::Empty => {},
+                        States::Filled => { valid = false },
+                    }
+                },
+                None => { valid = false },
+            }
+        }
+
+        if valid {
+            calculate_connections(&new_room, &mut cube, &mut possible_places, new_occupied_cells);
+            rooms.push(new_room);
+            rooms_to_go -= 1;
+        }
     }
+
+    let possible_connections = get_possible_connections(&mut possible_places);
+    let position = Some(possible_connections[rng.gen_range(0..possible_connections.len())]);
+
+    let end_room = Room {
+        room_type: RoomType::Cube,
+        dimensions: (1.0, 1.0, 1.0),
+        position,
+        color: [1.0, 1.0, 0.0, 1.0],
+        rotation: Rotation::None,
+    };
+
+    // let occupied_cells = get_occupied_cells(&seed_room);
+
+    // calculate_connections(&end_room, &mut cube, &mut possible_places, occupied_cells);
+    rooms.push(end_room);
 
 
 
@@ -394,67 +379,68 @@ fn populate_rooms(n: usize) -> Vec<Room> {
 
 // ... other code remains the same
 
-fn generate_rooms(weights: &HashMap<RoomType, usize>, num_rooms: usize, cube: &mut Cube) -> Vec<Room> {
-    let mut rooms = Vec::new();
-    let mut rng = thread_rng(); // Create a thread-local random number generator
+// fn generate_rooms(weights: &HashMap<RoomType, usize>, num_rooms: usize, cube: &mut Cube) -> Vec<Room> {
+//     let mut rooms = Vec::new();
+//     let mut rng = thread_rng(); // Create a thread-local random number generator
 
-    let mut rooms_to_go = num_rooms;
-    let total_weight: usize = weights.values().sum(); // Sum of all weights
+//     let mut rooms_to_go = num_rooms;
+//     let total_weight: usize = weights.values().sum(); // Sum of all weights
 
-    while rooms_to_go > 0 {
+//     while rooms_to_go > 0 {
         
-        let rand_val = rng.gen_range(0..total_weight); // Value for weighted selection
-        let mut cumulative_weight = 0;
-        // let rotation = match rng.gen_range(0..1) {
-        //     0 => Rotation::None,
-        //     // 1 => Rotation::Rot90,
-        //     _ => unreachable!(),
-        // };
+//         let rand_val = rng.gen_range(0..total_weight); // Value for weighted selection
+//         let mut cumulative_weight = 0;
+//         // let rotation = match rng.gen_range(0..1) {
+//         //     0 => Rotation::None,
+//         //     // 1 => Rotation::Rot90,
+//         //     _ => unreachable!(),
+//         // };
 
-        // Find matching type based on weight
-        for (room_type, weight) in weights {
-            cumulative_weight += weight;
-            if rand_val < cumulative_weight {
-                let dimensions: (isize, isize, isize) = match room_type {
-                    RoomType::Cube => (1, 1, 1),
-                    RoomType::R1 => (1, 1, 2),
-                    RoomType::R2 => (-2, 1, 1),
-                    RoomType::R3 => (1, 1, -2),
-                    RoomType::R4 => (2, 1, 1),
-                };
-                let mut temp_room = Room {
-                    room_type: room_type.clone(),
-                    dimensions,
-                    position: None,
-                    rotation: Rotation::None,
-                };
+//         // Find matching type based on weight
+//         for (room_type, weight) in weights {
+//             cumulative_weight += weight;
+//             if rand_val < cumulative_weight {
+//                 let dimensions: (isize, isize, isize) = match room_type {
+//                     RoomType::Cube => (1, 1, 1),
+//                     RoomType::R1 => (1, 1, 2),
+//                     RoomType::R2 => (-2, 1, 1),
+//                     RoomType::R3 => (1, 1, -2),
+//                     RoomType::R4 => (2, 1, 1),
+//                 };
+//                 let mut temp_room = Room {
+//                     room_type: room_type.clone(),
+//                     dimensions,
+//                     position: None,
+//                     color: [0.2, 1.0, 0.2, 1.0],
+//                     rotation: Rotation::None,
+//                 };
 
-                let r = place_room(&temp_room, cube);
-                if r == None {
+//                 let r = place_room(&temp_room, cube);
+//                 if r == None {
                     
-                } else {
-                    temp_room.position = r;
-                    rooms_to_go -= 1;
-                };
-                print_room(temp_room);
-                rooms.push(temp_room);
-                break;
-            }
-        }
-    }
+//                 } else {
+//                     temp_room.position = r;
+//                     rooms_to_go -= 1;
+//                 };
+//                 print_room(temp_room);
+//                 rooms.push(temp_room);
+//                 break;
+//             }
+//         }
+//     }
 
 
-    rooms
-}
+//     rooms
+// }
 
 
 
-fn place_room(room: &Room, cube: &mut Cube) -> Option<(usize, usize, usize)> {
-    let mut rng = rand::thread_rng();
-    let rand_axis = rng.gen_range(0..6);
-    let (dim_x, dim_y, dim_z) = room.dimensions;
+// fn place_room(room: &Room, cube: &mut Cube) -> Option<(usize, usize, usize)> {
+//     let mut rng = rand::thread_rng();
+//     let rand_axis = rng.gen_range(0..6);
+//     let (dim_x, dim_y, dim_z) = room.dimensions;
 
-    let start: isize = (cube.len() / 2) as isize;
+//     let start: isize = (cube.len() / 2) as isize;
 
     // if rand_axis == 0 {
     //     for x in start..(start*2) {
@@ -525,66 +511,66 @@ fn place_room(room: &Room, cube: &mut Cube) -> Option<(usize, usize, usize)> {
     // }
 
  // No valid placement found
-    return None;
-}
+//     return None;
+// }
 
-fn check_valid_placement(room: &Room, cube: &Cube, x: usize, y: usize, z: usize) -> bool {
-    let (dim_x, dim_y, dim_z) = room.dimensions;
+// fn check_valid_placement(room: &Room, cube: &Cube, x: usize, y: usize, z: usize) -> bool {
+//     let (dim_x, dim_y, dim_z) = room.dimensions;
 
-    let xb = x as isize;
-    let yb = y as isize;
-    let zb = z as isize;
+//     let xb = x as isize;
+//     let yb = y as isize;
+//     let zb = z as isize;
 
-    let size = cube.len() as isize;
+//     let size = cube.len() as isize;
     
-    // Check bounds and if cells are occupied
-    for i in xb..xb + dim_x {
-        for j in yb..yb + dim_y {
-            for k in zb..zb + dim_z {
-                if i < 0 || j < 0 || k < 0 {
-                    return false;
-                } else if i >= size || j >= size || k >= size {
-                    return false; 
-                } else if cube[i as usize][j as usize][k as usize].is_some() {
-                    return false;
-                }
-            }
-        }
-    }
+//     // Check bounds and if cells are occupied
+//     for i in xb..xb + dim_x {
+//         for j in yb..yb + dim_y {
+//             for k in zb..zb + dim_z {
+//                 if i < 0 || j < 0 || k < 0 {
+//                     return false;
+//                 } else if i >= size || j >= size || k >= size {
+//                     return false; 
+//                 } else if cube[i as usize][j as usize][k as usize].is_some() {
+//                     return false;
+//                 }
+//             }
+//         }
+//     }
 
-    true 
-}
+//     true 
+// }
 
 
-fn fill_new_cells(room: &Room, cube: &mut Cube, cells: Vec<(usize, usize, usize)>) {
-    for cell in cells {
-        cube[cell.0][cell.1][cell.2] = Some(room.clone()); 
-    }
-}
+// fn fill_new_cells(room: &Room, cube: &mut Cube, cells: Vec<(usize, usize, usize)>) {
+//     for cell in cells {
+//         cube[cell.0][cell.1][cell.2] = Some(room.clone()); 
+//     }
+// }
 
-fn check_occupied_cells(room: &Room, cube: &mut Cube, cells: &mut Vec<(usize, usize, usize)>) -> bool {
-    let mut valid = true;
-    for cell in cells.iter_mut() {
-        if cube[cell.0][cell.1][cell.2].is_some() {
-            valid = false;
-        }
-    }
+// fn check_occupied_cells(room: &Room, cube: &mut Cube, cells: &mut Vec<(usize, usize, usize)>) -> bool {
+//     let mut valid = true;
+//     for cell in cells.iter_mut() {
+//         if cube[cell.0][cell.1][cell.2].is_some() {
+//             valid = false;
+//         }
+//     }
 
-    if valid {
-        for cell in cells {
-            cube[cell.0][cell.1][cell.2] = Some(room.clone());
-        }
-    }
+//     if valid {
+//         for cell in cells {
+//             cube[cell.0][cell.1][cell.2] = Some(room.clone());
+//         }
+//     }
 
-    valid
-}
+//     valid
+// }
 
 fn get_occupied_cells(room: &Room) -> Vec<(usize, usize, usize)> {
     // let (x, y, z) = room.position.unwrap();
     let p = room.position.unwrap();
-    let x = p.0 as isize;
-    let y = p.1 as isize;
-    let z = p.2 as isize;
+    let x = p.0;
+    let y = p.1;
+    let z = p.2;
     let (mut dx, mut dy, mut dz) = room.dimensions;
 
     // match room.rotation {
@@ -593,16 +579,41 @@ fn get_occupied_cells(room: &Room) -> Vec<(usize, usize, usize)> {
     //     // Rotation::Rot270 => { std::mem::swap(&mut dy, &mut dz)},
     //     _ => {}
     // };
-
     let mut cells = Vec::new();
-    for i in x..x + dx {
-        for j in y..y + dy {
-            for k in z..z + dz {
-                cells.push(((i as usize), (j as usize), (k as usize)));
-                // println!("CELL: {}, {}, {}", x+i, y+j, z+k);
-            }
-        }
+
+    match room.room_type {
+        RoomType::Cube => {
+            cells.push((x, y, z));
+        },
+        RoomType::R1 => {
+            cells.push((x, y, z));
+            cells.push((x, y, z+1));
+        },
+        RoomType::R2 => {
+            cells.push((x, y, z));
+            cells.push((x-1, y, z));
+        },
+        RoomType::R3 => {
+            cells.push((x, y, z));
+            cells.push((x, y, z-1));
+        },
+        RoomType::R4 => {
+            cells.push((x, y, z));
+            cells.push((x+1, y, z));
+        },
     }
+
+
+
+
+    // for i in x..x + dx {
+    //     for j in y..y + dy {
+    //         for k in z..z + dz {
+    //             cells.push(((i as usize), (j as usize), (k as usize)));
+    //             // println!("CELL: {}, {}, {}", x+i, y+j, z+k);
+    //         }
+    //     }
+    // }
 
     println!("number of cells: {}", cells.len());
     cells

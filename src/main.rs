@@ -67,7 +67,7 @@ fn main() {
             primary_window: Some(Window {
                 title: "oxy beta".into(),
                 name: Some("bevy.app".into()),
-                resolution: (500., 300.).into(),
+                resolution: (1920., 1080.).into(),
                 prevent_default_event_handling: false,
                 enabled_buttons: bevy::window::EnabledButtons {
                     maximize: false,
@@ -93,8 +93,47 @@ fn main() {
         .insert_resource(ActiveCamera::Primary)
         .add_systems(Startup, setup)
         .add_systems(Update, (rotate, update_settings, keyboard_input, switch_cameras))
+        // .add_event::<PrintMessageEvent>() // Add the Events resource
+        // .add_systems(Update, (receive_event_system))
+
         .run();
 }
+
+
+
+// #[derive(Event)]
+// struct PrintMessageEvent {
+//     entity: Entity,
+//     commands: &Commands,
+// }
+
+
+// fn send_event_system(mut events: EventWriter<PrintMessageEvent>) {
+//     events.send(PrintMessageEvent("Hello from Bevy!".to_string()));
+// }
+
+// fn receive_event_system(
+//     mut events: EventReader<PrintMessageEvent>
+// ) {
+//     for event in events.read() {
+//         println!("Received message: {:?}", event.0);
+//     }
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #[derive(Component)]
@@ -116,7 +155,52 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
 
-    let rooms: Vec<map::Room> = map::generate_map(10);
+        // main camera
+        commands.spawn((
+            Camera3dBundle {
+                transform: Transform::from_translation(Vec3::new(0.0, 2.0, 5.0))
+                    .looking_at(Vec3::default(), Vec3::Y),
+                camera: Camera {
+                    clear_color: Color::WHITE.into(),
+                    // target: RenderTarget::Window(WindowRef::Primary),
+                    order: 1,
+                    is_active: true,
+                    ..default()
+                },
+                ..default()
+            },
+            PostProcessSettings {
+                intensity: 0.02,
+                sigma1: 8.0,
+                tau: 0.01,
+                gfact: 8.0,
+                epsilon: 0.0001,
+                num_gvf_iterations: 15,
+                enable_xdog: 1,
+            },
+            FlyCam,
+        )).insert(MainCamera);
+    
+        // frame times
+        commands.spawn(PerfUiCompleteBundle::default());
+    
+        // second camera
+        commands.spawn((
+            Camera3dBundle {
+                transform: Transform::from_translation(Vec3::new(0.0, 0.0, 4.0))
+                    .looking_at(Vec3::default(), Vec3::Y),
+                camera: Camera {
+                    clear_color: Color::WHITE.into(),
+                    order: 0,
+                    is_active: false,
+                    ..default()
+    
+                },
+                ..default()
+            },
+        )).insert(SecondCamera);
+
+    let rooms: Vec<map::Room> = map::generate_map(3);
     spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &rooms);
 
     commands.spawn(DirectionalLightBundle {
@@ -126,54 +210,6 @@ fn setup(
         },
         ..default()
     });
-    
-    // main camera
-    commands.spawn((
-        Camera3dBundle {
-            transform: Transform::from_translation(Vec3::new(0.0, 2.0, 5.0))
-                .looking_at(Vec3::default(), Vec3::Y),
-            camera: Camera {
-                clear_color: Color::WHITE.into(),
-                // target: RenderTarget::Window(WindowRef::Primary),
-                order: 1,
-                is_active: true,
-                ..default()
-            },
-            ..default()
-        },
-        PostProcessSettings {
-            intensity: 0.02,
-            sigma1: 8.0,
-            tau: 0.01,
-            gfact: 8.0,
-            epsilon: 0.0001,
-            num_gvf_iterations: 15,
-            enable_xdog: 1,
-        },
-        FlyCam,
-    )).insert(MainCamera);
-
-    // frame times
-    commands.spawn(PerfUiCompleteBundle::default());
-
-    // second camera
-    commands.spawn((
-        Camera3dBundle {
-            transform: Transform::from_translation(Vec3::new(0.0, 2.0, 5.0))
-                .looking_at(Vec3::default(), Vec3::Y),
-            camera: Camera {
-                clear_color: Color::WHITE.into(),
-                order: 0,
-                is_active: false,
-                ..default()
-
-            },
-            ..default()
-        },
-    )).insert(SecondCamera);
-
-
-
 }
 
 
@@ -182,6 +218,9 @@ fn calculate_offset(dimentions: (usize, usize, usize)) -> (f32, f32, f32) {
     (dimentions.0 as f32 / 2.0, dimentions.1 as f32, dimentions.2 as f32 / 2.0,)
 }
 
+#[derive(Component)]
+struct MapRoom;
+
 fn spawn_cubes_from_matrix(
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
@@ -189,33 +228,22 @@ fn spawn_cubes_from_matrix(
     rooms: &Vec<map::Room>,
 ) {
 
-    let spacing = 1.2;
-
     for room in rooms {
-        let mut color: [f32; 4];
-        match room.room_type {
-            map::RoomType::Cube => { color = [1.0, 0.3, 0.8, 1.0] },
-            map::RoomType::R1 => { color = [3.0, 0.7, 0.8, 1.0] },
-            map::RoomType::R2 => { color = [3.0, 0.7, 0.8, 1.0] },
-            map::RoomType::R3 => { color = [3.0, 0.7, 0.8, 1.0] },
-            map::RoomType::R4 => { color = [3.0, 0.7, 0.8, 1.0] },
-        }
         let (dx, dy, dz) = room.dimensions;
         if let Some((x, y, z)) = room.position {
 
             let offset = calculate_offset((dx as usize, dy as usize, dz as usize));
+            let from_origin = 5.0;
+            let spacing = 1.0;
 
-            let px = (x as f32 * spacing) - offset.0;
-            let py = (y as f32 * spacing) - offset.1;
-            let pz = (z as f32 * spacing) - offset.2;
+            let px = ((x as f32 * spacing) - offset.0) - (from_origin - 0.5);
+            let py = ((y as f32 * spacing) - offset.1) - (from_origin - 1.0);
+            let pz = ((z as f32 * spacing) - offset.2) - (from_origin - 0.0);
 
             let mut transform = Transform::from_xyz(px, py, pz);
 
             transform.rotation = match room.rotation {
                 Rotation::None => Quat::IDENTITY,
-                // Rotation::Rot90 => Quat::from_axis_angle(Vec3::X, std::f32::consts::PI / 2.0),
-                // Rotation::Rot180 => Quat::from_axis_angle(Vec3::X, std::f32::consts::PI),
-                // Rotation::Rot270 => Quat::from_axis_angle(Vec3::X, std::f32::consts::PI * 3.0 / 2.0),
             };
 
             println!("{:?}", transform.rotation);
@@ -223,92 +251,14 @@ fn spawn_cubes_from_matrix(
             commands.spawn((
                 PbrBundle {
                     mesh: meshes.add(Cuboid::from_size(vec3(dx as f32, dy as f32, dz as f32))), // Use Cuboid if needed
-                    material: materials.add(Color::rgba(color[0], color[1], color[2], color[3])), // Adjust color as needed
+                    material: materials.add(Color::rgba(room.color[0], room.color[1], room.color[2], room.color[3])), // Adjust color as needed
                     transform,
                     ..default()
                 },
+                MapRoom
             )); 
         }
-
-
-
-        // let spacing = 1.2;
-
-        // let x_pos: f32;
-        // let y_pos: f32;
-        // let z_pos: f32;
-
-        // if room.dimensions.0 > 1.0 {
-        //     x_pos = (room.position.0 * spacing) + 0.2;
-        //     y_pos = (room.position.1 * spacing) - (cube_size.x / 2.0 * spacing );
-        //     z_pos = (room.position.2 * spacing) - (cube_size.x / 2.0 * spacing );
-        // } else if room.dimensions.2 > 1.0 {
-        //     x_pos = (room.position.0 * spacing) - (cube_size.x / 2.0 * spacing );
-        //     y_pos = (room.position.1 * spacing) - (cube_size.x / 2.0 * spacing );
-        //     z_pos = (room.position.2 * spacing) + 0.2;
-        // } else {
-        //     x_pos = (room.position.0 * spacing) - (cube_size.x / 2.0 * spacing );
-        //     y_pos = (room.position.1 * spacing) - (cube_size.x / 2.0 * spacing );
-        //     z_pos = (room.position.2 * spacing) - (cube_size.x / 2.0 * spacing );
-        // }
-
-
-
-        // commands.spawn((
-        //     PbrBundle {
-        //         mesh: meshes.add(Cuboid::from_size(vec3(cube_size.x, cube_size.y, cube_size.z))), // Use Cuboid if needed
-        //         material: materials.add(Color::rgb(room.color[0], room.color[1], room.color[2])), // Adjust color as needed
-        //         transform: Transform::from_xyz(x_pos, y_pos, z_pos),
-        //         ..default()
-        //     },
-        // )); 
     }
-
-
-
-
-
-    // let cube_size = 1.0; 
-    // let spacing = 1.2; 
-
-    // // Find the coordinates of the start cell
-    // let mut start_x = 0; 
-    // let mut start_y = 0; 
-    // let mut start_z = 0;
-    // for (z, layer) in matrix.iter().enumerate() { 
-    //     for (y, row) in layer.iter().enumerate() {
-    //         for (x, cell) in row.iter().enumerate() {
-    //             if *cell == map::CellType::Start {
-    //                 start_x = x;
-    //                 start_y = y; 
-    //                 start_z = z; 
-    //                 break; // Found the start, stop searching
-    //             }
-    //         }
-    //     }
-    // }
-
-    // for (z, layer) in matrix.iter().enumerate() {
-    //     for (y, row) in layer.iter().enumerate() {
-    //         for (x, cell) in row.iter().enumerate() {
-    //             if *cell != map::CellType::Empty {  // Customize the condition
-    //                 let color = match cell {
-    //                     map::CellType::Empty => Color::rgb(0.8, 0.8, 0.8), // Adjust for background color
-    //                     map::CellType::Room => Color::rgb(0.2, 1.0, 0.2), // Green for rooms
-    //                     map::CellType::Start => Color::rgb(0.0, 0.0, 1.0), // Blue for start
-    //                     map::CellType::DeadEnd => Color::rgb(1.0, 1.0, 0.0), // Yellow for dead ends
-    //                 };    
-    //                 let x_pos = (x as f32 * spacing) - (start_x as f32 * spacing);
-    //                 let y_pos = (y as f32 * spacing) - (start_y as f32 * spacing);
-    //                 let z_pos = (z as f32 * spacing) - (start_z as f32 * spacing);
-
-    //                 for room in room_list
-
-
-    //             }
-    //         }
-    //     }
-    // }
 }
 
 
@@ -346,7 +296,7 @@ fn switch_cameras(
 }
 
 
-
+// mut secondary_camera: Query<&mut Camera, Without<MainCamera>>
 
 #[derive(Component)]
 struct Rotates; // ROTATES
@@ -365,35 +315,40 @@ struct KeyboardInput;
 fn keyboard_input(
     input: Res<ButtonInput<KeyCode>>,
     mut active_camera: ResMut<ActiveCamera>,
+    mut commands: Commands,
+    maprooms: Query<Entity, With<MapRoom>>,
 ) {
-    if input.pressed(KeyCode::KeyW) {
+    if input.just_pressed(KeyCode::KeyW) {
         info!("'W' currently pressed");
     }
     if input.just_pressed(KeyCode::KeyA) {
         info!("'A' just pressed");
     }
-    if input.just_released(KeyCode::KeyS) {
+    if input.just_pressed(KeyCode::KeyS) {
         info!("'S' just released");
     }
-    if input.just_released(KeyCode::KeyD) {
+    if input.just_pressed(KeyCode::KeyD) {
         info!("'D' just released");
     }
-    if input.just_released(KeyCode::Space) {
+    if input.just_pressed(KeyCode::Space) {
         info!("'Space' just released");
     }
-    if input.just_released(KeyCode::ControlLeft) {
+    if input.just_pressed(KeyCode::ControlLeft) {
         info!("'Left CTRL' just released");
     }
-    if input.just_released(KeyCode::ShiftLeft) {
+    if input.just_pressed(KeyCode::ShiftLeft) {
         info!("'Left SHIFT' just released");
     }
-    if input.just_released(KeyCode::KeyF) {
+    if input.just_pressed(KeyCode::KeyF) {
         info!("'F' just released");
+        for room in maprooms.iter() {
+            commands.entity(room).despawn();
+        }
     }
-    if input.just_released(KeyCode::KeyE) {
+    if input.just_pressed(KeyCode::KeyE) {
         info!("'E' just released");
     }
-    if input.just_released(KeyCode::KeyQ) {
+    if input.just_pressed(KeyCode::KeyQ) {
         info!("'Q' just released");
     }
     if input.just_pressed(KeyCode::Tab) {
