@@ -7,12 +7,12 @@ use bevy::{
     math::vec3, 
     prelude::*, transform::TransformSystem, winit::WinitSettings,
 };
-use bevy_flycam::prelude::*;
+// use bevy_flycam::prelude::*;
 use map::{Room, Rotation};
 use iyes_perf_ui::prelude::*;
 
 
-
+mod camera;
 mod mainmenu;
 mod game;
 mod map;
@@ -59,29 +59,23 @@ fn main() {
                 },
                 ..default()
             }),
-            
             ..default()
-        }).set(AssetPlugin {
+        })
+        .set(AssetPlugin {
             ..default()
-        }), postprocessing::PostProcessPlugin, NoCameraPlayerPlugin))
+        })))
+        // .insert_resource(WinitSettings::desktop_app()) // does not seem to be needed
         .add_plugins((
+            postprocessing::PostProcessPlugin,
+            // NoCameraPlayerPlugin,
+            camera::CameraPluginV2,
             bevy::diagnostic::FrameTimeDiagnosticsPlugin,
             bevy::diagnostic::EntityCountDiagnosticsPlugin,
             bevy::diagnostic::SystemInformationDiagnosticsPlugin,
             PerfUiPlugin,
         ))
-        .insert_resource(MovementSettings {
-            sensitivity: 0.00002, // default: 0.00012
-            speed: 6.0, // default: 12.0
-        })
-        .insert_resource(KeyBindings {
-            move_ascend: KeyCode::Space,
-            move_descend: KeyCode::ControlLeft,
-            ..Default::default()
-        })
         .insert_resource(game::ActiveCamera::Primary)
         .init_state::<GameState>()
-        // .add_systems(Startup, setup)
         // MAIN MENU SYSTEMS
         .add_systems(OnEnter(GameState::MainMenu), mainmenu::setup)
         .add_systems(OnExit(GameState::MainMenu), mainmenu::despawn_all)
@@ -91,12 +85,12 @@ fn main() {
         ).run_if(in_state(GameState::MainMenu)))
         // GAME SYSTEMS
         .add_systems(OnEnter(GameState::Game), game::game_setup)
-        .add_systems(OnExit(GameState::Game), game::despawn_all)
+        .add_systems(OnExit(GameState::Game), (game::despawn_all, map::despawn_all))
         .add_systems(Update, (
-            game::rotate_map,
+            map::rotate_map,
             game::update_settings,
             keyboard_input,
-            game::switch_cameras,
+            // game::switch_cameras,
         ).run_if(in_state(GameState::Game)))
         .run();
 }
@@ -125,7 +119,7 @@ fn keyboard_input(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    map: Query<Entity, With<game::MapParent>>,
+    map: Query<Entity, With<map::MapParent>>,
     gamestate: Res<State<GameState>>,
     mut next_state: ResMut<NextState<GameState>>
 ) {
@@ -175,10 +169,10 @@ fn keyboard_input(
         info!("'Q' just released");
     }
     if input.just_pressed(KeyCode::Tab) {
-        *active_camera = game::ActiveCamera::Secondary;
+        // *active_camera = game::ActiveCamera::Secondary;
     }
     if input.just_released(KeyCode::Tab) {
-        *active_camera = game::ActiveCamera::Primary;
+        // *active_camera = game::ActiveCamera::Primary;
     }
 }
 

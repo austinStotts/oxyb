@@ -8,6 +8,142 @@ use std::ops::Range;
 use rand::distributions::WeightedIndex; 
 use std::collections::{HashSet, HashMap};
 use std::hash::{Hash, Hasher};
+use std::{default, iter::once};
+
+use bevy::{
+    ecs::system::{Command, RunSystemOnce, SystemId},
+    math::vec3, 
+    prelude::*, 
+    transform::TransformSystem,
+};
+use bevy_flycam::prelude::*;
+// use map::{Room, Rotation};
+use iyes_perf_ui::prelude::*;
+
+use crate::game;
+
+
+#[derive(Component)]
+pub struct MapRoom;
+
+#[derive(Component)]
+pub struct MapParent;
+
+#[derive(Component)]
+pub struct DespawnOnExit;
+
+
+//                                                              SPAWN MAP CUBES
+pub fn spawn_cubes_from_matrix(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    rooms: &mut Vec<Room>,
+) {
+
+    let first_room = rooms.remove(0);
+    let (dx, dy, dz) = first_room.dimensions;
+    let (x, y, z) = first_room.position.unwrap();
+
+    let offset = calculate_offset((dx as usize, dy as usize, dz as usize));
+    let from_origin = 5.0;
+    let spacing = 1.0;
+
+    let px = ((x as f32 * spacing) - 1.0) - (from_origin);
+    let py = ((y as f32 * spacing)) - (from_origin);
+    let pz = ((z as f32 * spacing) - 1.0) - (from_origin);
+
+    let mut transform = Transform::from_xyz(px, py, pz);
+
+    transform.rotation = match first_room.rotation {
+        Rotation::None => Quat::IDENTITY,
+    };
+
+    println!("{:?}", transform.rotation);
+
+    let mut map: Entity = commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Cuboid::from_size(vec3((dx * 0.95), (dy * 0.95), (dz * 0.95)))), // Use Cuboid if needed
+            material: materials.add(Color::rgb(first_room.color[0], first_room.color[1], first_room.color[2])), // Adjust color as needed
+            // transform,
+            ..default()
+        },
+        MapParent,
+        MapRoom,
+        DespawnOnExit,
+    )).id(); 
+
+    {
+        println!("{}", rooms.len());
+        for room in rooms {
+            let (dx, dy, dz) = room.dimensions;
+            let (x, y, z) = room.position.unwrap();
+    
+            let offset = calculate_offset((dx as usize, dy as usize, dz as usize));
+            let from_origin = 5.0;
+            let spacing = 1.0;
+    
+            let px = ((x as f32 * spacing) - offset.0 + 0.5) - (from_origin);
+            let py = ((y as f32 * spacing)) - (from_origin);
+            let pz = ((z as f32 * spacing) - offset.2 + 0.5) - (from_origin);
+    
+            let mut transform = Transform::from_xyz(px, py, pz);
+    
+            transform.rotation = match room.rotation {
+                Rotation::None => Quat::IDENTITY,
+            };
+    
+            println!("{:?}", transform.translation);
+    
+            let child = commands.spawn((
+                PbrBundle {
+                    mesh: meshes.add(Cuboid::from_size(vec3((dx * 0.95), (dy * 0.95), (dz * 0.95)))), // Use Cuboid if needed
+                    material: materials.add(Color::rgb(room.color[0], room.color[1], room.color[2])), // Adjust color as needed
+                    transform,
+                    ..default()
+                },
+                MapRoom
+            )).id(); 
+    
+            commands.entity(map).add_child(child);
+        }
+    }
+    
+}
+
+pub fn calculate_offset(dimentions: (usize, usize, usize)) -> (f32, f32, f32) {
+    (dimentions.0 as f32 / 2.0, dimentions.1 as f32 / 2.0, dimentions.2 as f32 / 2.0,)
+}
+
+
+
+pub fn rotate_map(
+    mut map_parent: Query<&mut Transform, (With<MapParent>, Without<game::MainCamera>)>,
+    // camera: Query<&Transform, (With<MainCamera>)>,
+) {
+
+    // let mut r: Quat = Quat::default();
+    // for transform in camera.iter() {
+    //     r = transform.rotation;
+    // }
+
+    for mut parent in map_parent.iter_mut() {
+        parent.rotate_axis(Vec3 { x: 0.0, y: 1.0, z: 0.0 }, 0.0015);
+    }
+
+}
+
+
+pub fn despawn_all(entities: Query<Entity, With<DespawnOnExit>>, mut commands: Commands) {
+    for entity in entities.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+}
+
+
+// all map generation logic below
+// still some issues with spawning inside each other
+// so rare that it might be just one of the rotations that is wrong
 
 #[derive(Debug, Clone, Copy)]
 pub enum Rotation {

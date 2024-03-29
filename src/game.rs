@@ -1,16 +1,13 @@
 use std::{default, iter::once};
-
+// use bevy_flycam::prelude::*;
 use bevy::{
-    ecs::system::{Command, RunSystemOnce, SystemId},
-    math::vec3, 
-    prelude::*, 
-    transform::TransformSystem,
+    ecs::system::{Command, RunSystemOnce, SystemId}, math::vec3, prelude::*, render::camera::Viewport, transform::TransformSystem, winit::WinitSettings
 };
-use bevy_flycam::prelude::*;
+// use bevy_flycam::prelude::*;
 // use map::{Room, Rotation};
-use iyes_perf_ui::prelude::*;
-
-use crate::postprocessing;
+use iyes_perf_ui::{prelude::*, window};
+use bevy::window::{CursorGrabMode, PrimaryWindow};
+use crate::{camera::*, postprocessing};
 use crate::map;
 
 
@@ -20,9 +17,6 @@ pub struct DespawnOnExit;
 
 #[derive(Component)]
 pub struct Rotates;
-
-#[derive(Component)]
-pub struct MapRoom;
 
 #[derive(Component)]
 pub struct MainCamera;
@@ -36,8 +30,7 @@ pub enum ActiveCamera {
     Secondary
 }
 
-#[derive(Component)]
-pub struct MapParent;
+
 
 #[derive(Component)]
 pub struct CameraRef;
@@ -54,7 +47,32 @@ pub fn game_setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    // mut windowsettings: Query<ResMut<WinitSettings>>,
+    mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
 ) {
+
+
+    let mut window_size: (f32, f32) = (0.0, 0.0);
+
+    if let Ok(mut window) = primary_window.get_single_mut() {
+        window_size = (window.width(), window.height());
+        toggle_grab_cursor(&mut window);
+    } else {
+        warn!("Primary window not found for `initial_grab_cursor`!");
+    }
+    
+
+    // commands.insert_resource(WinitSettings::game());
+    commands.insert_resource(MovementSettings {
+        sensitivity: 0.00002, // default: 0.00012
+        speed: 6.0, // default: 12.0
+    });
+    commands.insert_resource(KeyBindings {
+        move_ascend: KeyCode::Space,
+        move_descend: KeyCode::ControlLeft,
+        ..Default::default()
+    });
+
     // main camera
     commands.spawn((
         Camera3dBundle {
@@ -62,7 +80,7 @@ pub fn game_setup(
                 .looking_at(Vec3::default(), Vec3::Y),
             camera: Camera {
                 clear_color: Color::WHITE.into(),
-                order: 1,
+                order: 0,
                 is_active: true,
                 ..default()
             },
@@ -82,18 +100,24 @@ pub fn game_setup(
         DespawnOnExit,
     ));
 
-    commands.spawn(PerfUiCompleteBundle::default()).insert(DespawnOnExit);
+    commands.spawn(PerfUiEntryFPS::default()).insert(DespawnOnExit);
+    // commands.spawn(PerfUiRoot {}).insert(DespawnOnExit);
 
     // SECONDARY CAMERA
     commands.spawn((
         Camera3dBundle {
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, 4.0))
                 .looking_at(Vec3::default(), Vec3::Y),
-            projection: Projection::Orthographic(OrthographicProjection { scale: 0.005, ..Default::default()}),
+            projection: Projection::Orthographic(OrthographicProjection { scale: 0.04, ..Default::default()}),
             camera: Camera {
+                viewport: Some(Viewport {
+                    physical_position: UVec2 { x: (window_size.0 as u32 - 150), y: (0) },
+                    physical_size: UVec2 { x: 150, y: 150 },
+                    ..Default::default()
+                }),
                 clear_color: Color::BLACK.into(),
-                order: 0,
-                is_active: false,
+                order: 1,
+                is_active: true,
                 ..default()
 
             },
@@ -104,7 +128,7 @@ pub fn game_setup(
     ));
 
     let mut rooms: Vec<map::Room> = map::generate_map(3);
-    spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &mut rooms);
+    map::spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &mut rooms);
 
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
@@ -123,7 +147,7 @@ pub fn spawn_new_map(
 ) {
     println!("SPAWNING NEW MAP");
     let mut new_rooms = map::generate_map(5);
-    spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &mut new_rooms);
+    map::spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &mut new_rooms);
 }
 
 
@@ -140,139 +164,71 @@ pub fn update_settings(mut settings: Query<&mut postprocessing::PostProcessSetti
 }
 
 //                                                              SWITCH CAMERAS
-pub fn switch_cameras(
-    mut active_camera: ResMut<ActiveCamera>,
-    mut main_camera: Query<(Entity, &mut Camera), With<MainCamera>>, 
-    mut secondary_camera: Query<&mut Camera, Without<MainCamera>>,
-    // mut camera_entity: Query< With<MainCamera>>,
-    mut commands: Commands,
-) {
-
-    // set main camera
-    for (entity, mut camera) in main_camera.iter_mut() {
-        match *active_camera {
-            ActiveCamera::Primary => {
-                camera.is_active = true;
-                commands.entity(entity).insert(FlyCam);
-            },
-            ActiveCamera::Secondary => {
-                camera.is_active = false;
-                commands.entity(entity).remove::<FlyCam>();
-            },
-        }
+// pub fn switch_cameras(
+//     mut active_camera: ResMut<ActiveCamera>,
+//     mut main_camera: Query<(Entity, &mut Camera), With<MainCamera>>, 
+//     mut secondary_camera: Query<&mut Camera, Without<MainCamera>>,
+//     // mut camera_entity: Query< With<MainCamera>>,
+//     mut commands: Commands,
+//     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
+// ) {
 
 
-        
-    }
+//     let mut window_size: (f32, f32) = (0.0, 0.0);
 
-    // set other cameras
-    for mut camera in secondary_camera.iter_mut() {
-        match *active_camera {
-            ActiveCamera::Primary => {
-                camera.is_active = false;
-            },
-            ActiveCamera::Secondary => {
-                camera.is_active = true;
-            },
-        }
-    }
+//     if let Ok(mut window) = primary_window.get_single_mut() {
+//         window_size = (window.width(), window.height());
+//         toggle_grab_cursor(&mut window);
+//     } else {
+//         warn!("Primary window not found for `initial_grab_cursor`!");
+//     }
 
-}
+//     // set main camera
+//     for (entity, mut camera) in main_camera.iter_mut() {
+//         match *active_camera {
+//             ActiveCamera::Primary => {
+//                 camera.is_active = true;
+//                 commands.entity(entity).insert(FlyCam);
+//             },
+//             ActiveCamera::Secondary => {
+//                 camera.is_active = false;
+//                 commands.entity(entity).remove::<FlyCam>();
+//             },
+//         }
+//     }
 
-pub fn rotate_map(
-    mut map_parent: Query<&mut Transform, (With<MapParent>, Without<MainCamera>)>,
-    // camera: Query<&Transform, (With<MainCamera>)>,
-) {
+//     // set other cameras
+//     for mut camera in secondary_camera.iter_mut() {
+//         match *active_camera {
+//             ActiveCamera::Primary => {
+//                 // camera.is_active = false;
+//                 // camera.viewport = Some(Viewport {
+//                 //     physical_position: UVec2 { x: (window_size.0 as u32 - 100), y: (0) },
+//                 //     physical_size: UVec2 { x: 100, y: 100 },
+//                 //     ..Default::default()
+//                 // })
+//                 let cam = camera.clone();
+//                 let viewport = cam.viewport.unwrap();
+//                 if viewport.physical_position.x != (window_size.0 as u32 - 100) {
+//                     camera.viewport = Some(Viewport {
+//                         physical_position: UVec2 { x: (window_size.0 as u32 - 100), y: (0) },
+//                         physical_size: UVec2 { x: 100, y: 100 },
+//                         ..Default::default()
+//                     })
+//                 }
+//             },
+//             ActiveCamera::Secondary => {
+//                 // camera.is_active = true;
+//                 let cam = camera.clone();
+//                 let viewport = cam.viewport.unwrap();
+//                 if viewport.physical_size.x != (window_size.0 as u32) {
+//                     camera.viewport = Some(Viewport::default());
+//                 }
+//             },
+//         }
+//     }
 
-    // let mut r: Quat = Quat::default();
-    // for transform in camera.iter() {
-    //     r = transform.rotation;
-    // }
+// }
 
-    for mut parent in map_parent.iter_mut() {
-        parent.rotate_axis(Vec3 { x: 0.0, y: 1.0, z: 0.0 }, 0.0015);
-    }
 
-}
 
-//                                                              SPAWN MAP CUBES
-pub fn spawn_cubes_from_matrix(
-    commands: &mut Commands,
-    meshes: &mut ResMut<Assets<Mesh>>,
-    materials: &mut ResMut<Assets<StandardMaterial>>,
-    rooms: &mut Vec<map::Room>,
-) {
-
-    let first_room = rooms.remove(0);
-    let (dx, dy, dz) = first_room.dimensions;
-    let (x, y, z) = first_room.position.unwrap();
-
-    let offset = calculate_offset((dx as usize, dy as usize, dz as usize));
-    let from_origin = 5.0;
-    let spacing = 1.0;
-
-    let px = ((x as f32 * spacing) - 1.0) - (from_origin);
-    let py = ((y as f32 * spacing)) - (from_origin);
-    let pz = ((z as f32 * spacing) - 1.0) - (from_origin);
-
-    let mut transform = Transform::from_xyz(px, py, pz);
-
-    transform.rotation = match first_room.rotation {
-        map::Rotation::None => Quat::IDENTITY,
-    };
-
-    println!("{:?}", transform.rotation);
-
-    let mut map: Entity = commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Cuboid::from_size(vec3((dx * 0.95), (dy * 0.95), (dz * 0.95)))), // Use Cuboid if needed
-            material: materials.add(Color::rgb(first_room.color[0], first_room.color[1], first_room.color[2])), // Adjust color as needed
-            // transform,
-            ..default()
-        },
-        MapParent,
-        MapRoom,
-        DespawnOnExit,
-    )).id(); 
-
-    {
-        println!("{}", rooms.len());
-        for room in rooms {
-            let (dx, dy, dz) = room.dimensions;
-            let (x, y, z) = room.position.unwrap();
-    
-            let offset = calculate_offset((dx as usize, dy as usize, dz as usize));
-            let from_origin = 5.0;
-            let spacing = 1.0;
-    
-            let px = ((x as f32 * spacing) - offset.0 + 0.5) - (from_origin);
-            let py = ((y as f32 * spacing)) - (from_origin);
-            let pz = ((z as f32 * spacing) - offset.2 + 0.5) - (from_origin);
-    
-            let mut transform = Transform::from_xyz(px, py, pz);
-    
-            transform.rotation = match room.rotation {
-                map::Rotation::None => Quat::IDENTITY,
-            };
-    
-            println!("{:?}", transform.translation);
-    
-            let child = commands.spawn((
-                PbrBundle {
-                    mesh: meshes.add(Cuboid::from_size(vec3((dx * 0.95), (dy * 0.95), (dz * 0.95)))), // Use Cuboid if needed
-                    material: materials.add(Color::rgb(room.color[0], room.color[1], room.color[2])), // Adjust color as needed
-                    transform,
-                    ..default()
-                },
-                MapRoom
-            )).id(); 
-    
-            commands.entity(map).add_child(child);
-        }
-    }
-    
-}
-
-pub fn calculate_offset(dimentions: (usize, usize, usize)) -> (f32, f32, f32) {
-    (dimentions.0 as f32 / 2.0, dimentions.1 as f32 / 2.0, dimentions.2 as f32 / 2.0,)
-}
