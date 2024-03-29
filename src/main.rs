@@ -1,7 +1,7 @@
 
 
 use std::{default, iter::once};
-
+use bevy_rapier3d::prelude::*;
 use bevy::{
     ecs::system::{Command, RunSystemOnce, SystemId},
     math::vec3, 
@@ -73,6 +73,8 @@ fn main() {
             bevy::diagnostic::EntityCountDiagnosticsPlugin,
             bevy::diagnostic::SystemInformationDiagnosticsPlugin,
             PerfUiPlugin,
+            RapierPhysicsPlugin::<NoUserData>::default(),
+            RapierDebugRenderPlugin::default(),
         ))
         .insert_resource(game::ActiveCamera::Primary)
         .init_state::<GameState>()
@@ -84,7 +86,7 @@ fn main() {
             mainmenu::button_interaction_system,
         ).run_if(in_state(GameState::MainMenu)))
         // GAME SYSTEMS
-        .add_systems(OnEnter(GameState::Game), game::game_setup)
+        .add_systems(OnEnter(GameState::Game), (game::game_setup, game::setup_physics))
         .add_systems(OnExit(GameState::Game), (game::despawn_all, map::despawn_all))
         .add_systems(Update, (
             map::rotate_map,

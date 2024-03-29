@@ -39,6 +39,7 @@ pub fn spawn_cubes_from_matrix(
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
     rooms: &mut Vec<Room>,
+    origin: (f32, f32, f32),
 ) {
 
     let first_room = rooms.remove(0);
@@ -49,9 +50,9 @@ pub fn spawn_cubes_from_matrix(
     let from_origin = 5.0;
     let spacing = 1.0;
 
-    let px = ((x as f32 * spacing) - 1.0) - (from_origin);
-    let py = ((y as f32 * spacing)) - (from_origin);
-    let pz = ((z as f32 * spacing) - 1.0) - (from_origin);
+    let px = (x as f32 + origin.0) - from_origin;
+    let py = (y as f32 + origin.1) - from_origin;
+    let pz = (z as f32 + origin.2) - from_origin;
 
     let mut transform = Transform::from_xyz(px, py, pz);
 
@@ -65,7 +66,7 @@ pub fn spawn_cubes_from_matrix(
         PbrBundle {
             mesh: meshes.add(Cuboid::from_size(vec3((dx * 0.95), (dy * 0.95), (dz * 0.95)))), // Use Cuboid if needed
             material: materials.add(Color::rgb(first_room.color[0], first_room.color[1], first_room.color[2])), // Adjust color as needed
-            // transform,
+            transform,
             ..default()
         },
         MapParent,
@@ -83,9 +84,9 @@ pub fn spawn_cubes_from_matrix(
             let from_origin = 5.0;
             let spacing = 1.0;
     
-            let px = ((x as f32 * spacing) - offset.0 + 0.5) - (from_origin);
-            let py = ((y as f32 * spacing)) - (from_origin);
-            let pz = ((z as f32 * spacing) - offset.2 + 0.5) - (from_origin);
+            let px = x as f32 - from_origin;// + origin.0;
+            let py = y as f32 - from_origin;// + origin.1;
+            let pz = z as f32 - from_origin;// + origin.2;
     
             let mut transform = Transform::from_xyz(px, py, pz);
     

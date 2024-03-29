@@ -9,6 +9,7 @@ use iyes_perf_ui::{prelude::*, window};
 use bevy::window::{CursorGrabMode, PrimaryWindow};
 use crate::{camera::*, postprocessing};
 use crate::map;
+use bevy_rapier3d::prelude::*;
 
 
 
@@ -106,8 +107,8 @@ pub fn game_setup(
     // SECONDARY CAMERA
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 4.0))
-                .looking_at(Vec3::default(), Vec3::Y),
+            transform: Transform::from_translation(Vec3::new(20.0, 0.0, 24.0))
+                .looking_at(Vec3 { x: 20.0, y: 0.0, z: 20.0 }, Vec3::Y),
             projection: Projection::Orthographic(OrthographicProjection { scale: 0.04, ..Default::default()}),
             camera: Camera {
                 viewport: Some(Viewport {
@@ -128,7 +129,7 @@ pub fn game_setup(
     ));
 
     let mut rooms: Vec<map::Room> = map::generate_map(3);
-    map::spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &mut rooms);
+    map::spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &mut rooms, (20.0, 0.0, 20.0));
 
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
@@ -139,6 +140,20 @@ pub fn game_setup(
     });
 }
 
+pub fn setup_physics(mut commands: Commands) {
+    /* Create the ground. */
+    commands
+        .spawn(Collider::cuboid(100.0, 0.1, 100.0))
+        .insert(TransformBundle::from(Transform::from_xyz(0.0, -2.0, 0.0)));
+
+    /* Create the bouncing ball. */
+    commands
+        .spawn(RigidBody::Dynamic)
+        .insert(Collider::ball(0.5))
+        .insert(Restitution::coefficient(0.7))
+        .insert(TransformBundle::from(Transform::from_xyz(0.0, 4.0, 0.0)));
+}
+
 
 pub fn spawn_new_map(
     mut commands: Commands,
@@ -147,7 +162,7 @@ pub fn spawn_new_map(
 ) {
     println!("SPAWNING NEW MAP");
     let mut new_rooms = map::generate_map(5);
-    map::spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &mut new_rooms);
+    map::spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &mut new_rooms, (0.0, 0.0, 0.0));
 }
 
 
