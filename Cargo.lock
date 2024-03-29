@@ -2643,6 +2643,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_flycam",
+ "bevy_ui",
  "iyes_perf_ui",
  "rand",
 ]

@@ -5,7 +5,7 @@ use std::{default, iter::once};
 use bevy::{
     ecs::system::{Command, RunSystemOnce, SystemId},
     math::vec3, 
-    prelude::*, transform::TransformSystem,
+    prelude::*, transform::TransformSystem, winit::WinitSettings,
 };
 use bevy_flycam::prelude::*;
 use map::{Room, Rotation};
@@ -59,6 +59,9 @@ fn main() {
                 },
                 ..default()
             }),
+            
+            ..default()
+        }).set(AssetPlugin {
             ..default()
         }), postprocessing::PostProcessPlugin, NoCameraPlayerPlugin))
         .add_plugins((
@@ -84,6 +87,7 @@ fn main() {
         .add_systems(OnExit(GameState::MainMenu), mainmenu::despawn_all)
         .add_systems(Update, (
             keyboard_input,
+            mainmenu::button_interaction_system,
         ).run_if(in_state(GameState::MainMenu)))
         // GAME SYSTEMS
         .add_systems(OnEnter(GameState::Game), game::game_setup)

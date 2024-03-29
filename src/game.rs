@@ -181,17 +181,18 @@ pub fn switch_cameras(
 
 pub fn rotate_map(
     mut map_parent: Query<&mut Transform, (With<MapParent>, Without<MainCamera>)>,
-    camera: Query<(&Transform), (With<MainCamera>)>
+    // camera: Query<&Transform, (With<MainCamera>)>,
 ) {
 
-    let mut r: Quat = Quat::default();
-    for transform in camera.iter() {
-        r = transform.rotation;
-    }
+    // let mut r: Quat = Quat::default();
+    // for transform in camera.iter() {
+    //     r = transform.rotation;
+    // }
 
     for mut parent in map_parent.iter_mut() {
-        parent.rotation.y = r.y;
+        parent.rotate_axis(Vec3 { x: 0.0, y: 1.0, z: 0.0 }, 0.0015);
     }
+
 }
 
 //                                                              SPAWN MAP CUBES
