@@ -214,7 +214,7 @@ impl Plugin for PlayerPlugin {
             .init_resource::<KeyBindings>()
             .add_systems(Startup, setup_player)
             .add_systems(Startup, initial_grab_cursor)
-            .add_systems(Update, player_move)
+            // .add_systems(Update, player_move)
             .add_systems(Update, player_look)
             .add_systems(Update, cursor_grab);
     }
@@ -229,7 +229,7 @@ impl Plugin for CameraPluginV2 {
             .init_resource::<KeyBindings>()
             .add_systems(Startup, initial_grab_cursor)
             .add_systems(Startup, initial_grab_on_flycam_spawn)
-            .add_systems(Update, player_move)
+            // .add_systems(Update, player_move)
             .add_systems(Update, player_look)
             .add_systems(Update, cursor_grab);
     }

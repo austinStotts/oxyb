@@ -1,12 +1,13 @@
 
 
 use std::{default, iter::once};
-use bevy_rapier3d::prelude::*;
+use bevy_rapier3d::{prelude::*, rapier::geometry::Ball};
 use bevy::{
     ecs::system::{Command, RunSystemOnce, SystemId},
     math::vec3, 
     prelude::*, transform::TransformSystem, winit::WinitSettings,
 };
+use camera::prelude::game::MainCamera;
 // use bevy_flycam::prelude::*;
 use map::{Room, Rotation};
 use iyes_perf_ui::prelude::*;
@@ -92,6 +93,7 @@ fn main() {
             map::rotate_map,
             game::update_settings,
             keyboard_input,
+            game::update_player_camera,
             // game::switch_cameras,
         ).run_if(in_state(GameState::Game)))
         .run();
@@ -117,16 +119,46 @@ fn print_state(state: Res<State<GameState>>) {
 //                                                          KEYBOARD INPUTS
 fn keyboard_input(
     input: Res<ButtonInput<KeyCode>>,
-    mut active_camera: ResMut<game::ActiveCamera>,
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    meshes: ResMut<Assets<Mesh>>,
+    materials: ResMut<Assets<StandardMaterial>>,
     map: Query<Entity, With<map::MapParent>>,
     gamestate: Res<State<GameState>>,
-    mut next_state: ResMut<NextState<GameState>>
+    mut next_state: ResMut<NextState<GameState>>,
+    mut player_body: Query<&mut Transform, (With<game::PlayerBody>, Without<MainCamera>)>,
+    mut camera_query: Query<&mut Transform, (With<MainCamera>, Without<game::PlayerBody>)>,
+    time: Res<Time>,
 ) {
+
+    let speed: f32 = 6.0;
+    let mut forward: Vec3 = vec3(0.0, 0.0, 0.0);
+    let mut right: Vec3 = vec3(0.0, 0.0, 0.0);
+    
+
+    for mut transform in camera_query.iter_mut() {
+        let mut velocity = Vec3::ZERO;
+        let local_z = transform.local_z();
+        forward = -Vec3::new(local_z.x, 0., local_z.z);
+        right = Vec3::new(local_z.z, 0., -local_z.x);
+
+        if input.pressed(KeyCode::KeyW) { velocity += forward; }
+        if input.pressed(KeyCode::KeyA) { velocity -= right; }
+        if input.pressed(KeyCode::KeyS) { velocity -= forward; }
+        if input.pressed(KeyCode::KeyD) { velocity += right; }
+        velocity = velocity.normalize_or_zero();
+
+        if let Ok(mut player_transform) = player_body.get_single_mut() {
+            // player_transform.tra (velocity * time.delta_seconds() * speed).x;
+            player_transform.translation.x += (velocity * time.delta_seconds() * speed).x;
+            player_transform.translation.z += (velocity * time.delta_seconds() * speed).z;
+        }
+    }
+
     if input.just_pressed(KeyCode::KeyW) {
-        info!("'W' currently pressed");
+        // info!("'W' currently pressed");
+        // if let Ok(mut player_transform) = player_body.get_single_mut() {
+        //     player_transform.translation.x += 0.25;
+        // }
     }
     if input.just_pressed(KeyCode::KeyA) {
         info!("'A' just pressed");

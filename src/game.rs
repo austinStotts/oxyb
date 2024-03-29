@@ -1,7 +1,7 @@
 use std::{default, iter::once};
 // use bevy_flycam::prelude::*;
 use bevy::{
-    ecs::system::{Command, RunSystemOnce, SystemId}, math::vec3, prelude::*, render::camera::Viewport, transform::TransformSystem, winit::WinitSettings
+    ecs::system::{Command, RunSystemOnce, SystemId}, math::vec3, prelude::*, render::camera::Viewport, transform::{self, TransformSystem}, winit::WinitSettings
 };
 // use bevy_flycam::prelude::*;
 // use map::{Room, Rotation};
@@ -31,7 +31,8 @@ pub enum ActiveCamera {
     Secondary
 }
 
-
+#[derive(Component)]
+pub struct PlayerBody;
 
 #[derive(Component)]
 pub struct CameraRef;
@@ -149,9 +150,24 @@ pub fn setup_physics(mut commands: Commands) {
     /* Create the bouncing ball. */
     commands
         .spawn(RigidBody::Dynamic)
-        .insert(Collider::ball(0.5))
-        .insert(Restitution::coefficient(0.7))
-        .insert(TransformBundle::from(Transform::from_xyz(0.0, 4.0, 0.0)));
+        .insert(Collider::capsule_y(1.5, 1.0))
+        .insert(Restitution::coefficient(0.9))
+        .insert(TransformBundle::from(Transform::from_xyz(0.0, 4.0, 0.0)))
+        .insert(PlayerBody);
+}
+
+pub fn update_player_camera(
+    mut player_camera: Query<(&mut Transform), With<MainCamera>>,
+    mut player_body: Query<&Transform, (With<PlayerBody>, Without<MainCamera>)>
+) {
+
+    if let Ok(mut body_transform) = player_body.get_single_mut() {
+        if let Ok(mut camera_transform) = player_camera.get_single_mut() {
+            camera_transform.translation = vec3(body_transform.translation.x, body_transform.translation.y, body_transform.translation.z);
+        }
+    }
+
+
 }
 
 
