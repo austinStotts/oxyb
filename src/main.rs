@@ -18,17 +18,11 @@ mod mainmenu;
 mod game;
 mod map;
 mod postprocessing;
+mod models;
 
 
 
-#[derive(Clone, Eq, PartialEq, Debug, Hash, Default, States)]
-enum GameState {
-    #[default]
-    MainMenu,
-    Settings,
-    Setup,
-    Game,
-}
+
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Default, States)]
 enum DevState {
@@ -78,24 +72,25 @@ fn main() {
             RapierDebugRenderPlugin::default(),
         ))
         .insert_resource(game::ActiveCamera::Primary)
-        .init_state::<GameState>()
+        .init_state::<mainmenu::GameState>()
+        // .add_systems(Startup, models::load_model)
         // MAIN MENU SYSTEMS
-        .add_systems(OnEnter(GameState::MainMenu), mainmenu::setup)
-        .add_systems(OnExit(GameState::MainMenu), mainmenu::despawn_all)
+        .add_systems(OnEnter(mainmenu::GameState::MainMenu), mainmenu::setup)
+        .add_systems(OnExit(mainmenu::GameState::MainMenu), mainmenu::despawn_all)
         .add_systems(Update, (
             keyboard_input,
             mainmenu::button_interaction_system,
-        ).run_if(in_state(GameState::MainMenu)))
+        ).run_if(in_state(mainmenu::GameState::MainMenu)))
         // GAME SYSTEMS
-        .add_systems(OnEnter(GameState::Game), (game::game_setup, game::setup_physics))
-        .add_systems(OnExit(GameState::Game), (game::despawn_all, map::despawn_all))
+        .add_systems(OnEnter(mainmenu::GameState::Game), (game::game_setup, game::setup_physics))
+        .add_systems(OnExit(mainmenu::GameState::Game), (game::despawn_all, map::despawn_all))
         .add_systems(Update, (
             map::rotate_map,
             game::update_settings,
             keyboard_input,
             game::update_player_camera,
             // game::switch_cameras,
-        ).run_if(in_state(GameState::Game)))
+        ).run_if(in_state(mainmenu::GameState::Game)))
         .run();
 }
 
@@ -106,12 +101,12 @@ fn main() {
 // #[derive(Component)]
 
 
-fn print_state(state: Res<State<GameState>>) {
+fn print_state(state: Res<State<mainmenu::GameState>>) {
     match state.get() {
-        GameState::MainMenu => { println!("GAME STATE: MAIN MENU") },
-        GameState::Settings => { println!("GAME STATE: SETTINGS") },
-        GameState::Setup => { println!("GAME STATE: SETUP") },
-        GameState::Game => { println!("GAME STATE: GAME") },
+        mainmenu::GameState::MainMenu => { println!("GAME STATE: MAIN MENU") },
+        mainmenu::GameState::Settings => { println!("GAME STATE: SETTINGS") },
+        mainmenu::GameState::Setup => { println!("GAME STATE: SETUP") },
+        mainmenu::GameState::Game => { println!("GAME STATE: GAME") },
     }
 }
 
@@ -123,8 +118,8 @@ fn keyboard_input(
     meshes: ResMut<Assets<Mesh>>,
     materials: ResMut<Assets<StandardMaterial>>,
     map: Query<Entity, With<map::MapParent>>,
-    gamestate: Res<State<GameState>>,
-    mut next_state: ResMut<NextState<GameState>>,
+    gamestate: Res<State<mainmenu::GameState>>,
+    mut next_state: ResMut<NextState<mainmenu::GameState>>,
     mut player_body: Query<&mut Transform, (With<game::PlayerBody>, Without<MainCamera>)>,
     mut camera_query: Query<&mut Transform, (With<MainCamera>, Without<game::PlayerBody>)>,
     time: Res<Time>,
@@ -188,13 +183,13 @@ fn keyboard_input(
     if input.just_pressed(KeyCode::KeyE) {
         info!("'E' just released");
         match gamestate.get() {
-            GameState::MainMenu => {
+            mainmenu::GameState::MainMenu => {
                 println!("SETTING GAME STATE TO |GAME|");
-                next_state.set(GameState::Game);
+                next_state.set(mainmenu::GameState::Game);
             }
-            GameState::Game => {
+            mainmenu::GameState::Game => {
                 println!("SETTING GAME STATE TO |MAIN MENU|");
-                next_state.set(GameState::MainMenu);
+                next_state.set(mainmenu::GameState::MainMenu);
             }
             _ => {}
         }
