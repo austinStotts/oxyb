@@ -51,6 +51,7 @@ pub fn game_setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     // mut windowsettings: Query<ResMut<WinitSettings>>,
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
+    asset_server: Res<AssetServer>,
 ) {
 
 
@@ -67,7 +68,7 @@ pub fn game_setup(
     // commands.insert_resource(WinitSettings::game());
     commands.insert_resource(MovementSettings {
         sensitivity: 0.00002, // default: 0.00012
-        speed: 6.0, // default: 12.0
+        speed: 0.25, // default: 12.0
     });
     commands.insert_resource(KeyBindings {
         move_ascend: KeyCode::Space,
@@ -139,6 +140,25 @@ pub fn game_setup(
         },
         ..default()
     });
+
+
+    // Load the mesh file
+    // let model_handle: Handle<Mesh> = 
+    // asset_server.get_asset_loader_with_extension(extension)
+
+    // Spawn the object as a PBR entity (adjust if needed):
+    commands.spawn(SceneBundle {
+        scene: asset_server.load("objects/console.gltf#Scene0"),
+        transform: Transform {
+            scale: vec3(0.25, 0.25, 0.25),
+            ..default()
+        },
+        // material: materials.add(Color::rgb(0.8, 0.7, 0.6)),
+        // transform: Transform::from_xyz(0.0, 0.0, 0.0),
+        ..default()
+    });
+
+
 }
 
 pub fn setup_physics(mut commands: Commands) {

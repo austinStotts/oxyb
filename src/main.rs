@@ -125,7 +125,7 @@ fn keyboard_input(
     time: Res<Time>,
 ) {
 
-    let speed: f32 = 6.0;
+    let speed: f32 = 2.0;
     let mut forward: Vec3 = vec3(0.0, 0.0, 0.0);
     let mut right: Vec3 = vec3(0.0, 0.0, 0.0);
     
