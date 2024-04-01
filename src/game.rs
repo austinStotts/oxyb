@@ -1,4 +1,4 @@
-use std::{default, iter::once};
+use std::{default, f32::consts::PI, iter::once};
 // use bevy_flycam::prelude::*;
 use bevy::{
     ecs::system::{Command, RunSystemOnce, SystemId}, math::vec3, prelude::*, render::camera::Viewport, transform::{self, TransformSystem}, winit::WinitSettings
@@ -9,6 +9,7 @@ use iyes_perf_ui::{prelude::*, window};
 use bevy::window::{CursorGrabMode, PrimaryWindow};
 use crate::{camera::*, postprocessing};
 use crate::map;
+use crate::console;
 use bevy_rapier3d::prelude::*;
 
 
@@ -36,6 +37,10 @@ pub struct PlayerBody;
 
 #[derive(Component)]
 pub struct CameraRef;
+
+
+
+
 
 
 pub fn despawn_all(entities: Query<Entity, With<DespawnOnExit>>, mut commands: Commands) {
@@ -141,22 +146,14 @@ pub fn game_setup(
         ..default()
     });
 
-
-    // Load the mesh file
-    // let model_handle: Handle<Mesh> = 
-    // asset_server.get_asset_loader_with_extension(extension)
-
     // Spawn the object as a PBR entity (adjust if needed):
-    commands.spawn(SceneBundle {
-        scene: asset_server.load("objects/console.gltf#Scene0"),
-        transform: Transform {
-            scale: vec3(0.25, 0.25, 0.25),
-            ..default()
-        },
-        // material: materials.add(Color::rgb(0.8, 0.7, 0.6)),
-        // transform: Transform::from_xyz(0.0, 0.0, 0.0),
-        ..default()
-    });
+    let transform: Transform = Transform {
+        translation: vec3(0.0, 0.0, -1.0),
+        scale: vec3(0.25, 0.25, 0.25),
+        rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI)
+    };
+
+    console::spawn_console(transform, String::from("primary"), asset_server, commands, meshes, materials);
 
 
 }

@@ -12,14 +12,13 @@ use camera::prelude::game::MainCamera;
 use map::{Room, Rotation};
 use iyes_perf_ui::prelude::*;
 
-
 mod camera;
 mod mainmenu;
 mod game;
 mod map;
 mod postprocessing;
 mod models;
-
+mod console;
 
 
 
