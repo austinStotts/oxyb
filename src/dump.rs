@@ -104,3 +104,60 @@ fn check_valid_placement(room: &Room, cube: &Cube, x: usize, y: usize, z: usize)
     true 
 }
 
+
+
+
+
+
+
+
+
+
+
+use bevy::prelude::*;
+use bevy_ui::prelude::*;
+
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    // Setup your 3D camera
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..default()
+    });
+
+    // Setup your UI camera
+    commands.spawn(Camera2dBundle::default());
+
+    // Create UI text within 3D Space 
+    commands.spawn(NodeBundle {
+        style: Style {
+            size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                left: Val::Px(10.0),
+                bottom: Val::Px(10.0),
+                ..default() 
+            },
+            ..default()
+        },
+        ..default()
+    })
+    .with_children(|parent| {
+        parent.spawn(TextBundle {
+            text: Text::from_section("Hello from 3D!", TextStyle {
+                font: asset_server.load("fonts/my_font.ttf"),
+                font_size: 40.0,
+                color: Color::ORANGE,
+            }),
+            ..default()
+        });
+    });
+}
+
+
+
+
+
+
+
+
+
