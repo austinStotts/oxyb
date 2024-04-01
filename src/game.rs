@@ -208,7 +208,7 @@ pub fn update_settings(mut settings: Query<&mut postprocessing::PostProcessSetti
         let mut intensity = (time.elapsed_seconds() * 3.0).sin();
         intensity = intensity.sin();
         intensity = intensity * 0.5 + 0.5;
-        intensity *= 0.005;
+        intensity *= 0.0025;
 
         setting.intensity = intensity;
     }
