@@ -14,6 +14,14 @@ pub struct ActiveTerminal {
 #[derive(Component)]
 pub struct ConsoleTerminal;
 
+#[derive(Resource)]
+pub struct Terminal {
+    text: Vec<String>,
+}
+
+#[derive(Component)]
+pub struct TerminalScreen;
+
 
 
 pub struct ConsolePlugin;
@@ -21,7 +29,7 @@ pub struct ConsolePlugin;
 impl Plugin for ConsolePlugin {
     fn build(&self, app: &mut App) {
         // add things to your app here
-        
+        app.insert_resource(Terminal{ text: vec![String::from("hello world")] });
     }
 }
 
@@ -33,14 +41,23 @@ fn access_terminal(
     }
 }
 
+fn update_terminal(
+    terminal: ResMut<Terminal>,
+    terminal_screen_query: Query<Entity, With<TerminalScreen>>,
+) {
+
+    // make the terminal screen match the global resourse each frame.
+
+}
+
 
 pub fn spawn_console(
     transform: Transform,
     Id: String,
-    asset_server: Res<AssetServer>,
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: & Res<AssetServer>,
+    mut commands: &mut Commands,
+    mut meshes: &mut ResMut<Assets<Mesh>>,
+    mut materials: &mut ResMut<Assets<StandardMaterial>>,
 ) {
 
 
@@ -52,11 +69,6 @@ pub fn spawn_console(
     
         // Setup your UI camera
         // commands.spawn(Camera2dBundle::default());
-    
-
-
-
-
 
     let console = commands.spawn(SceneBundle {
         scene: asset_server.load("objects/console.gltf#Scene0"),
@@ -86,11 +98,23 @@ pub fn spawn_console(
 
 
 
+    // let text_list = vec![
+    //     "> hello world",
+    //     "> mission -1 -hard",
+    //     "...running",
+    //     "> list players",
+    //     "steve, bob, joe, mac",
+    //     "> print time",
+    //     "11:34 AM",
+    //     "> print depth",
+    //     "2086 meters"
+    // ];
+
     
     let mesh = get_text_mesh("hello world");
     let scale = vec3(0.05, 0.05, 0.05);
 
-    // text
+    // create the screen element to attatch the text children to
     let screen = commands.spawn(PbrBundle {
         transform: Transform {
             translation: vec3(
@@ -102,31 +126,13 @@ pub fn spawn_console(
             ..default()
         },
         ..Default::default()
-    })
+    }).insert(TerminalScreen)
     .id();
 
-
-
-    // let bundle1 = PbrBundle {
-    //     mesh: meshes.add(mesh.clone()),
-    //     material: materials.add(Color::rgb(0.1, 1.0, 0.1)),
-    //     // transform mesh so that it is in the center
-    //     transform: Transform { 
-    //         translation: vec3(
-    //             0.0,
-    //             1.6,
-    //             0.0,
-    //         ),
-    //         scale,
-    //         rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI)
-    //     },
-    //     ..Default::default()
-    // };
-
+    // create the default bundle for the text
     let bundle = PbrBundle {
         mesh: meshes.add(mesh.clone()),
         material: materials.add(Color::rgb(0.1, 1.0, 0.1)),
-        // transform mesh so that it is in the center
         transform: Transform { 
             scale,
             rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI),
@@ -135,20 +141,22 @@ pub fn spawn_console(
         ..Default::default()
     };
 
-    let mut b1 = bundle.clone();
-    let mut b2 = bundle.clone();
-    let mut b3 = bundle.clone();
-    let mut b4 = bundle.clone();
-    let mut b5 = bundle.clone();
+    // let mut bundles = vec![];
 
-    let mut bundles = vec![b1, b2, b3, b4, b5];
+    // for text in text_list {
+    //     let mut b = bundle.clone();
+    //     b.mesh = meshes.add(get_text_mesh(text));
+    //     bundles.push(b);
+    // }
 
-    for (i, mut bundle) in bundles.iter_mut().enumerate() {
-        get_text_pos(&mut bundle, i);
-        let line = commands.spawn(bundle.clone()).id();
-        commands.entity(screen).add_child(line);
-    }
+    // for (i, mut bundle) in bundles.iter_mut().enumerate() {
+    //     get_text_pos(&mut bundle, i);
+    //     let line = commands.spawn(bundle.clone()).id();
+    //     commands.entity(screen).add_child(line);
+    // }
 
+    let line = commands.spawn(bundle).id();
+    commands.entity(screen).add_child(line);
     
 
 

@@ -69,6 +69,7 @@ fn main() {
             PerfUiPlugin,
             RapierPhysicsPlugin::<NoUserData>::default(),
             RapierDebugRenderPlugin::default(),
+            console::ConsolePlugin,
         ))
         .insert_resource(game::ActiveCamera::Primary)
         .init_state::<mainmenu::GameState>()

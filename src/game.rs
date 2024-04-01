@@ -153,7 +153,23 @@ pub fn game_setup(
         rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI)
     };
 
-    console::spawn_console(transform, String::from("primary"), asset_server, commands, meshes, materials);
+    console::spawn_console(transform, String::from("primary"), &asset_server, &mut commands, &mut meshes, &mut materials);
+
+    let transform2: Transform = Transform {
+        translation: vec3(2.0, 0.0, -1.0),
+        scale: vec3(0.25, 0.25, 0.25),
+        rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI)
+    };
+
+    console::spawn_console(transform2, String::from("secondary"), &asset_server, &mut commands, &mut meshes, &mut materials);
+
+    let transform3: Transform = Transform {
+        translation: vec3(4.0, 0.0, -1.0),
+        scale: vec3(0.25, 0.25, 0.25),
+        rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI)
+    };
+
+    console::spawn_console(transform3, String::from("alternate"), &asset_server, &mut commands, &mut meshes, &mut materials);
 
 
 }
@@ -169,7 +185,7 @@ pub fn setup_physics(mut commands: Commands) {
         .spawn(RigidBody::Dynamic)
         .insert(Collider::capsule_y(1.5, 1.0))
         .insert(Restitution::coefficient(0.9))
-        .insert(TransformBundle::from(Transform::from_xyz(0.0, 4.0, 0.0)))
+        .insert(TransformBundle::from(Transform::from_xyz(0.0, 1.5, 0.0)))
         .insert(PlayerBody);
 }
 
