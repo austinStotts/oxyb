@@ -155,21 +155,21 @@ pub fn game_setup(
 
     console::spawn_console(transform, String::from("primary"), &asset_server, &mut commands, &mut meshes, &mut materials);
 
-    let transform2: Transform = Transform {
-        translation: vec3(2.0, 0.0, -1.0),
-        scale: vec3(0.25, 0.25, 0.25),
-        rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI)
-    };
+    // let transform2: Transform = Transform {
+    //     translation: vec3(2.0, 0.0, -1.0),
+    //     scale: vec3(0.25, 0.25, 0.25),
+    //     rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI)
+    // };
 
-    console::spawn_console(transform2, String::from("secondary"), &asset_server, &mut commands, &mut meshes, &mut materials);
+    // console::spawn_console(transform2, String::from("secondary"), &asset_server, &mut commands, &mut meshes, &mut materials);
 
-    let transform3: Transform = Transform {
-        translation: vec3(4.0, 0.0, -1.0),
-        scale: vec3(0.25, 0.25, 0.25),
-        rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI)
-    };
+    // let transform3: Transform = Transform {
+    //     translation: vec3(4.0, 0.0, -1.0),
+    //     scale: vec3(0.25, 0.25, 0.25),
+    //     rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI)
+    // };
 
-    console::spawn_console(transform3, String::from("alternate"), &asset_server, &mut commands, &mut meshes, &mut materials);
+    // console::spawn_console(transform3, String::from("alternate"), &asset_server, &mut commands, &mut meshes, &mut materials);
 
 
 }

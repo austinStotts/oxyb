@@ -69,10 +69,13 @@ fn main() {
             PerfUiPlugin,
             RapierPhysicsPlugin::<NoUserData>::default(),
             RapierDebugRenderPlugin::default(),
-            console::ConsolePlugin,
+            // console::ConsolePlugin,
         ))
+        .insert_resource(console::Terminal { text: vec![String::from("universal instruction terminal v0.2.3")] })
+        .insert_resource(console::CurrentCommand { text: String::from("> ") })
         .insert_resource(game::ActiveCamera::Primary)
         .init_state::<mainmenu::GameState>()
+        .init_state::<console::ConsoleState>()
         // .add_systems(Startup, models::load_model)
         // MAIN MENU SYSTEMS
         .add_systems(OnEnter(mainmenu::GameState::MainMenu), mainmenu::setup)
@@ -89,8 +92,10 @@ fn main() {
             game::update_settings,
             keyboard_input,
             game::update_player_camera,
+            console::use_console,
             // game::switch_cameras,
         ).run_if(in_state(mainmenu::GameState::Game)))
+        .add_systems(PostUpdate, (console::update_terminal).run_if(in_state(mainmenu::GameState::Game)))
         .run();
 }
 
