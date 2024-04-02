@@ -66,134 +66,31 @@ pub fn update_terminal(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
 
-    // if let Ok(mut screen) = console_wuery.get_single_mut() {
-    //     println!("CAN GE THE CONSOLE");
-    // }
-
-    // make the terminal screen match the global resourse each frame.
     let mut text_list: Vec<&str> = vec![];
     for line in terminal.text.iter() {
         text_list.push(&line);
     }
-    println!("{}", text_list.len());
-    let leftover = 14 - text_list.len();
-    println!("{}", leftover);
-    for x in 0..leftover {
-        text_list.push(" ");
+
+    if text_list.len() > 13 {
+        let s = text_list.len() - 13;
+        text_list = text_list[s..].to_vec();
     }
-    text_list.insert(13, &current_command.text);
-    // text_list.reverse();
 
-    let mesh = get_text_mesh("goodbye world");
-    let scale = vec3(0.05, 0.05, 0.05);
+    let leftover = 14 - text_list.len();
 
-    // let bundle = PbrBundle {
-    //     mesh: meshes.add(mesh.clone()),
-    //     material: materials.add(Color::rgb(0.1, 1.0, 0.1)),
-    //     transform: Transform { 
-    //         translation: vec3(0.0, 1.6, 0.0),
-    //         scale,
-    //         rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI),
-    //         ..Default::default()
-    //     },
-    //     ..Default::default()
-    // };
-
-    // let text_list2 = vec![
-    //     "> hello world",
-    //     "> mission -1 -hard",
-    //     "...running",
-    //     "> list players",
-    //     "steve, bob, joe, mac",
-    //     "> print time",
-    //     "11:34 AM",
-    //     "> print depth",
-    //     "2086 meters"
-    // ];
-
-    // let mut bundles = vec![];
-
-    // for text in text_list {
-    //     let mut b = bundle.clone();
-    //     b.mesh = meshes.add(get_text_mesh(text));
-    //     bundles.push(b);
-    // }
-
-    // let mut line_ids = vec![];
-
-
-
-
-    // change to instead iterate over the text list and make sure text list is the correct size.
-    // then change the last line to be the command... still cant see the command
-
+    for x in 0..leftover {
+        text_list.push(".");
+    }
+    let mut command_line_string = String::from("> ");
+    command_line_string.push_str(&current_command.text);
+    text_list.insert(13, &command_line_string);
 
     for (i, (mut entity, mut mesh) ) in terminal_child_query.iter_mut().enumerate() {
-        // if i == text_list.len() {
-        //     *mesh = meshes.add(get_text_mesh(&current_command.text))
-        // }
-
         *mesh = meshes.add(get_text_mesh(text_list[i]));
     }
-
-
-    
-    // println!("length of text: {}", text_list.len());
-    // println!("length of meshes: {}", line_ids.len());
-
-    
-    // *line_ids[1] = meshes.add(get_text_mesh(text_list[0]));
-    // *line_ids[2] = meshes.add(get_text_mesh(text_list[0]));
-    // *line_ids[3] = meshes.add(get_text_mesh(text_list[0]));
-    // *line_ids[4] = meshes.add(get_text_mesh(text_list[0]));
-    // *line_ids[5] = meshes.add(get_text_mesh(text_list[0]));
-    // *line_ids[6] = meshes.add(get_text_mesh(text_list[0]));
-    // *line_ids[7] = meshes.add(get_text_mesh(text_list[0]));
-    // *line_ids[8] = meshes.add(get_text_mesh(text_list[0]));
-    // *line_ids[9] = meshes.add(get_text_mesh(text_list[0]));
-    // *line_ids[10] = meshes.add(get_text_mesh(text_list[0]));
-    // *line_ids[11] = meshes.add(get_text_mesh(text_list[0]));
-    // *line_ids[12] = meshes.add(get_text_mesh(text_list[0]));
-    // *line_ids[13] = meshes.add(get_text_mesh(text_list[0]));
-
-
-
-
-
-    // first push the new rows into the children list
-    // then remove the old ones
-    // if we do it in reverse and the children list becomes empty we cannot add more children
-    // if let Ok(mut screen) = terminal_screen_query.get_single_mut() {
-
-    //         // println!("{i}");
-    //         // commands.entity(screen).remove_children(&[entity]);
-    //         // commands.entity(entity).despawn();
-    //         lines.push(meshes.get_mut(mesh).expect("could not open mesh"));
-    //     }
-
-    //     for (i, text) in text_list.iter().enumerate() {
-    //         // let new_bundle = get_text_pos(&mut bundle, i);
-    //         // let line = commands.spawn(new_bundle).insert(ConsoleText).id();
-    //         // commands.entity(screen).push_children(&[line]);
-    //         // lines[i]
-    //         let mut new_mesh = get_text_mesh(text);
-    //         // lines[i] = &mut new_mesh;
-    //     }
-    //     println!("{}",terminal_child_query.iter().len());
-
-
-
-        // let mut b1 = bundle.clone();
-        // b1.mesh = meshes.add(get_text_mesh(&current_command.text));
-        // let new_bundle = get_text_pos(&mut b1, 14 as usize);
-        // let line = commands.spawn(new_bundle).insert(ConsoleText).id();
-        // commands.entity(screen).push_children(&[line]);
-    // } 
-
-
-
-
 }
+
+
 
 pub fn use_console(
     mut terminal: ResMut<Terminal>,
@@ -201,6 +98,10 @@ pub fn use_console(
     console_state: Res<State<ConsoleState>>,
     input: Res<ButtonInput<KeyCode>>,
 ) {
+
+
+
+
     match console_state.get() {
         ConsoleState::IsUsingConsole => {
             for key in input.get_just_pressed() {
@@ -244,10 +145,6 @@ pub fn use_console(
                     KeyCode::Digit9 => { current_command.text.push_str("9") }
                     KeyCode::Space => { current_command.text.push_str(" ") }
                     KeyCode::Backspace => { current_command.text.pop(); }
-                    KeyCode::Enter => { 
-                        terminal.text.push(current_command.text.clone());
-                        current_command.text = String::from("> ");
-                     }
                     KeyCode::ShiftRight => { terminal.text.push(String::from("HELLO WORLD")) }
                     KeyCode::ControlRight => { terminal.text.pop(); }
                     // KeyCode::KeyA => { current_command.text.push_str("a") }
@@ -263,6 +160,22 @@ pub fn use_console(
                     // KeyCode::KeyA => { current_command.text.push_str("a") }
                     // KeyCode::KeyA => { current_command.text.push_str("a") }
                     // KeyCode::KeyA => { current_command.text.push_str("a") }
+
+                    KeyCode::Enter => { 
+    
+                        let command = current_command.text.clone();
+                        terminal.text.push(current_command.text.clone());
+                        current_command.text = String::from("");
+
+                        if command.eq("clear") {
+                            println!("CLEAR COMMAND");
+                            terminal.text = Vec::new();
+                        }
+
+
+
+
+                     }
                     _ => {}
                 }
                 // make a holder for the inputs. use enter to submit
