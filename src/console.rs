@@ -33,8 +33,8 @@ pub struct ConsoleText;
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Default, States)]
 pub enum ConsoleState {
     #[default]
-    IsUsingConsole,
     IsNotUsingConsole,
+    IsUsingConsole,
 }
 
 
@@ -59,7 +59,7 @@ fn access_terminal(
 pub fn update_terminal(
     terminal: ResMut<Terminal>,
     current_command: ResMut<CurrentCommand>,
-    mut terminal_child_query: Query<Entity, With<ConsoleText>>,
+    mut terminal_child_query: Query<(Entity, &mut Handle<Mesh>), With<ConsoleText>>,
     mut terminal_screen_query: Query<Entity, (With<TerminalScreen>, Without<ConsoleText>)>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -75,21 +75,29 @@ pub fn update_terminal(
     for line in terminal.text.iter() {
         text_list.push(&line);
     }
+    println!("{}", text_list.len());
+    let leftover = 14 - text_list.len();
+    println!("{}", leftover);
+    for x in 0..leftover {
+        text_list.push(" ");
+    }
+    text_list.insert(13, &current_command.text);
+    // text_list.reverse();
 
     let mesh = get_text_mesh("goodbye world");
     let scale = vec3(0.05, 0.05, 0.05);
 
-    let bundle = PbrBundle {
-        mesh: meshes.add(mesh.clone()),
-        material: materials.add(Color::rgb(0.1, 1.0, 0.1)),
-        transform: Transform { 
-            translation: vec3(0.0, 1.6, 0.0),
-            scale,
-            rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI),
-            ..Default::default()
-        },
-        ..Default::default()
-    };
+    // let bundle = PbrBundle {
+    //     mesh: meshes.add(mesh.clone()),
+    //     material: materials.add(Color::rgb(0.1, 1.0, 0.1)),
+    //     transform: Transform { 
+    //         translation: vec3(0.0, 1.6, 0.0),
+    //         scale,
+    //         rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI),
+    //         ..Default::default()
+    //     },
+    //     ..Default::default()
+    // };
 
     // let text_list2 = vec![
     //     "> hello world",
@@ -103,33 +111,84 @@ pub fn update_terminal(
     //     "2086 meters"
     // ];
 
-    let mut bundles = vec![];
+    // let mut bundles = vec![];
 
-    for text in text_list {
-        let mut b = bundle.clone();
-        b.mesh = meshes.add(get_text_mesh(text));
-        bundles.push(b);
+    // for text in text_list {
+    //     let mut b = bundle.clone();
+    //     b.mesh = meshes.add(get_text_mesh(text));
+    //     bundles.push(b);
+    // }
+
+    // let mut line_ids = vec![];
+
+
+
+
+    // change to instead iterate over the text list and make sure text list is the correct size.
+    // then change the last line to be the command... still cant see the command
+
+
+    for (i, (mut entity, mut mesh) ) in terminal_child_query.iter_mut().enumerate() {
+        // if i == text_list.len() {
+        //     *mesh = meshes.add(get_text_mesh(&current_command.text))
+        // }
+
+        *mesh = meshes.add(get_text_mesh(text_list[i]));
     }
+
+
+    
+    // println!("length of text: {}", text_list.len());
+    // println!("length of meshes: {}", line_ids.len());
+
+    
+    // *line_ids[1] = meshes.add(get_text_mesh(text_list[0]));
+    // *line_ids[2] = meshes.add(get_text_mesh(text_list[0]));
+    // *line_ids[3] = meshes.add(get_text_mesh(text_list[0]));
+    // *line_ids[4] = meshes.add(get_text_mesh(text_list[0]));
+    // *line_ids[5] = meshes.add(get_text_mesh(text_list[0]));
+    // *line_ids[6] = meshes.add(get_text_mesh(text_list[0]));
+    // *line_ids[7] = meshes.add(get_text_mesh(text_list[0]));
+    // *line_ids[8] = meshes.add(get_text_mesh(text_list[0]));
+    // *line_ids[9] = meshes.add(get_text_mesh(text_list[0]));
+    // *line_ids[10] = meshes.add(get_text_mesh(text_list[0]));
+    // *line_ids[11] = meshes.add(get_text_mesh(text_list[0]));
+    // *line_ids[12] = meshes.add(get_text_mesh(text_list[0]));
+    // *line_ids[13] = meshes.add(get_text_mesh(text_list[0]));
+
+
+
+
 
     // first push the new rows into the children list
     // then remove the old ones
     // if we do it in reverse and the children list becomes empty we cannot add more children
-    if let Ok(mut screen) = terminal_screen_query.get_single_mut() {
-        for (i, mut bundle) in bundles.iter_mut().enumerate() {
-            let new_bundle = get_text_pos(&mut bundle, i);
-            let line = commands.spawn(new_bundle).id();
-            commands.entity(screen).push_children(&[line]);
-        }
+    // if let Ok(mut screen) = terminal_screen_query.get_single_mut() {
 
-        for (i, mut entity) in terminal_child_query.iter_mut().enumerate() {
-            commands.entity(screen).remove_children(&[entity]);
-        }
-        let mut b1 = bundle.clone();
-        b1.mesh = meshes.add(get_text_mesh(&current_command.text));
-        let new_bundle = get_text_pos(&mut b1, 14 as usize);
-        let line = commands.spawn(new_bundle).id();
-        commands.entity(screen).push_children(&[line]);
-    } 
+    //         // println!("{i}");
+    //         // commands.entity(screen).remove_children(&[entity]);
+    //         // commands.entity(entity).despawn();
+    //         lines.push(meshes.get_mut(mesh).expect("could not open mesh"));
+    //     }
+
+    //     for (i, text) in text_list.iter().enumerate() {
+    //         // let new_bundle = get_text_pos(&mut bundle, i);
+    //         // let line = commands.spawn(new_bundle).insert(ConsoleText).id();
+    //         // commands.entity(screen).push_children(&[line]);
+    //         // lines[i]
+    //         let mut new_mesh = get_text_mesh(text);
+    //         // lines[i] = &mut new_mesh;
+    //     }
+    //     println!("{}",terminal_child_query.iter().len());
+
+
+
+        // let mut b1 = bundle.clone();
+        // b1.mesh = meshes.add(get_text_mesh(&current_command.text));
+        // let new_bundle = get_text_pos(&mut b1, 14 as usize);
+        // let line = commands.spawn(new_bundle).insert(ConsoleText).id();
+        // commands.entity(screen).push_children(&[line]);
+    // } 
 
 
 
@@ -137,14 +196,75 @@ pub fn update_terminal(
 }
 
 pub fn use_console(
-    terminal: ResMut<Terminal>,
+    mut terminal: ResMut<Terminal>,
+    mut current_command: ResMut<CurrentCommand>,
     console_state: Res<State<ConsoleState>>,
     input: Res<ButtonInput<KeyCode>>,
 ) {
     match console_state.get() {
         ConsoleState::IsUsingConsole => {
             for key in input.get_just_pressed() {
-                println!("{:?}", key);
+                println!("{}", current_command.text);
+                match key {
+                    KeyCode::KeyA => { current_command.text.push_str("a") }
+                    KeyCode::KeyB => { current_command.text.push_str("b") }
+                    KeyCode::KeyC => { current_command.text.push_str("c") }
+                    KeyCode::KeyD => { current_command.text.push_str("d") }
+                    KeyCode::KeyE => { current_command.text.push_str("e") }
+                    KeyCode::KeyF => { current_command.text.push_str("f") }
+                    KeyCode::KeyG => { current_command.text.push_str("g") }
+                    KeyCode::KeyH => { current_command.text.push_str("h") }
+                    KeyCode::KeyI => { current_command.text.push_str("i") }
+                    KeyCode::KeyJ => { current_command.text.push_str("j") }
+                    KeyCode::KeyK => { current_command.text.push_str("k") }
+                    KeyCode::KeyL => { current_command.text.push_str("l") }
+                    KeyCode::KeyM => { current_command.text.push_str("m") }
+                    KeyCode::KeyN => { current_command.text.push_str("n") }
+                    KeyCode::KeyO => { current_command.text.push_str("o") }
+                    KeyCode::KeyP => { current_command.text.push_str("p") }
+                    KeyCode::KeyQ => { current_command.text.push_str("q") }
+                    KeyCode::KeyR => { current_command.text.push_str("r") }
+                    KeyCode::KeyS => { current_command.text.push_str("s") }
+                    KeyCode::KeyT => { current_command.text.push_str("t") }
+                    KeyCode::KeyU => { current_command.text.push_str("u") }
+                    KeyCode::KeyV => { current_command.text.push_str("v") }
+                    KeyCode::KeyW => { current_command.text.push_str("w") }
+                    KeyCode::KeyX => { current_command.text.push_str("x") }
+                    KeyCode::KeyY => { current_command.text.push_str("y") }
+                    KeyCode::KeyZ => { current_command.text.push_str("z") }
+                    KeyCode::Digit0 => { current_command.text.push_str("0") }
+                    KeyCode::Digit1 => { current_command.text.push_str("1") }
+                    KeyCode::Digit2 => { current_command.text.push_str("2") }
+                    KeyCode::Digit3 => { current_command.text.push_str("3") }
+                    KeyCode::Digit4 => { current_command.text.push_str("4") }
+                    KeyCode::Digit5 => { current_command.text.push_str("5") }
+                    KeyCode::Digit6 => { current_command.text.push_str("6") }
+                    KeyCode::Digit7 => { current_command.text.push_str("7") }
+                    KeyCode::Digit8 => { current_command.text.push_str("8") }
+                    KeyCode::Digit9 => { current_command.text.push_str("9") }
+                    KeyCode::Space => { current_command.text.push_str(" ") }
+                    KeyCode::Backspace => { current_command.text.pop(); }
+                    KeyCode::Enter => { 
+                        terminal.text.push(current_command.text.clone());
+                        current_command.text = String::from("> ");
+                     }
+                    KeyCode::ShiftRight => { terminal.text.push(String::from("HELLO WORLD")) }
+                    KeyCode::ControlRight => { terminal.text.pop(); }
+                    // KeyCode::KeyA => { current_command.text.push_str("a") }
+                    // KeyCode::KeyA => { current_command.text.push_str("a") }
+                    // KeyCode::KeyA => { current_command.text.push_str("a") }
+                    // KeyCode::KeyA => { current_command.text.push_str("a") }
+                    // KeyCode::KeyA => { current_command.text.push_str("a") }
+                    // KeyCode::KeyA => { current_command.text.push_str("a") }
+                    // KeyCode::KeyA => { current_command.text.push_str("a") }
+                    // KeyCode::KeyA => { current_command.text.push_str("a") }
+                    // KeyCode::KeyA => { current_command.text.push_str("a") }
+                    // KeyCode::KeyA => { current_command.text.push_str("a") }
+                    // KeyCode::KeyA => { current_command.text.push_str("a") }
+                    // KeyCode::KeyA => { current_command.text.push_str("a") }
+                    // KeyCode::KeyA => { current_command.text.push_str("a") }
+                    _ => {}
+                }
                 // make a holder for the inputs. use enter to submit
                 // somehow display the unfinished command with the other lines.
                 // shouldnt be that hard
@@ -270,9 +390,17 @@ pub fn spawn_console(
     //     commands.entity(screen).add_child(line);
     // }
 
-    let line = commands.spawn(bundle).insert(ConsoleText).id();
-    commands.entity(screen).add_child(line);
-    
+
+    for i in 0..13 {
+        let mut b = bundle.clone();
+        let new_bundle = get_text_pos(&mut b, i as usize);
+        let line = commands.spawn(new_bundle).insert(ConsoleText).id();
+        commands.entity(screen).add_child(line);
+    }
+
+    let command_bundle = get_text_pos(&mut bundle.clone(), 13);
+    let command_line = commands.spawn(command_bundle).insert(ConsoleText).id();
+    commands.entity(screen).add_child(command_line);
 
 
     // commands.entity(screen).add_child(line1);

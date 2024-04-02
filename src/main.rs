@@ -128,31 +128,40 @@ fn keyboard_input(
     mut player_body: Query<&mut Transform, (With<game::PlayerBody>, Without<MainCamera>)>,
     mut camera_query: Query<&mut Transform, (With<MainCamera>, Without<game::PlayerBody>)>,
     time: Res<Time>,
+    mut console_state: Res<State<console::ConsoleState>>,
+    mut next_console_state: ResMut<NextState<console::ConsoleState>>,
 ) {
 
     let speed: f32 = 2.0;
     let mut forward: Vec3 = vec3(0.0, 0.0, 0.0);
     let mut right: Vec3 = vec3(0.0, 0.0, 0.0);
     
-
-    for mut transform in camera_query.iter_mut() {
-        let mut velocity = Vec3::ZERO;
-        let local_z = transform.local_z();
-        forward = -Vec3::new(local_z.x, 0., local_z.z);
-        right = Vec3::new(local_z.z, 0., -local_z.x);
-
-        if input.pressed(KeyCode::KeyW) { velocity += forward; }
-        if input.pressed(KeyCode::KeyA) { velocity -= right; }
-        if input.pressed(KeyCode::KeyS) { velocity -= forward; }
-        if input.pressed(KeyCode::KeyD) { velocity += right; }
-        velocity = velocity.normalize_or_zero();
-
-        if let Ok(mut player_transform) = player_body.get_single_mut() {
-            // player_transform.tra (velocity * time.delta_seconds() * speed).x;
-            player_transform.translation.x += (velocity * time.delta_seconds() * speed).x;
-            player_transform.translation.z += (velocity * time.delta_seconds() * speed).z;
+    match console_state.get() {
+        &console::ConsoleState::IsNotUsingConsole => {
+            for mut transform in camera_query.iter_mut() {
+                let mut velocity = Vec3::ZERO;
+                let local_z = transform.local_z();
+                forward = -Vec3::new(local_z.x, 0., local_z.z);
+                right = Vec3::new(local_z.z, 0., -local_z.x);
+        
+                if input.pressed(KeyCode::KeyW) { velocity += forward; }
+                if input.pressed(KeyCode::KeyA) { velocity -= right; }
+                if input.pressed(KeyCode::KeyS) { velocity -= forward; }
+                if input.pressed(KeyCode::KeyD) { velocity += right; }
+                velocity = velocity.normalize_or_zero();
+        
+                if let Ok(mut player_transform) = player_body.get_single_mut() {
+                    // player_transform.tra (velocity * time.delta_seconds() * speed).x;
+                    player_transform.translation.x += (velocity * time.delta_seconds() * speed).x;
+                    player_transform.translation.z += (velocity * time.delta_seconds() * speed).z;
+                }
+            }
         }
+        _ => {}
     }
+
+
+    // should probably keep up with keys in each system and not globally here
 
     if input.just_pressed(KeyCode::KeyW) {
         // info!("'W' currently pressed");
@@ -179,25 +188,31 @@ fn keyboard_input(
         info!("'Left SHIFT' just released");
     }
     if input.just_pressed(KeyCode::KeyF) {
-        info!("'F' just released");
-        for entity in map.iter() {
-            commands.entity(entity).despawn_recursive();
-        }
-        game::spawn_new_map(commands, meshes, materials);
-    }
-    if input.just_pressed(KeyCode::KeyE) {
-        info!("'E' just released");
-        match gamestate.get() {
-            mainmenu::GameState::MainMenu => {
-                println!("SETTING GAME STATE TO |GAME|");
-                next_state.set(mainmenu::GameState::Game);
-            }
-            mainmenu::GameState::Game => {
-                println!("SETTING GAME STATE TO |MAIN MENU|");
-                next_state.set(mainmenu::GameState::MainMenu);
+        match console_state.get() {
+            console::ConsoleState::IsNotUsingConsole => {
+                next_console_state.set(console::ConsoleState::IsUsingConsole);
             }
             _ => {}
         }
+        // info!("'F' just released");
+        // for entity in map.iter() {
+        //     commands.entity(entity).despawn_recursive();
+        // }
+        // game::spawn_new_map(commands, meshes, materials);
+    }
+    if input.just_pressed(KeyCode::KeyE) {
+        info!("'E' just released");
+        // match gamestate.get() {
+        //     mainmenu::GameState::MainMenu => {
+        //         println!("SETTING GAME STATE TO |GAME|");
+        //         next_state.set(mainmenu::GameState::Game);
+        //     }
+        //     mainmenu::GameState::Game => {
+        //         println!("SETTING GAME STATE TO |MAIN MENU|");
+        //         next_state.set(mainmenu::GameState::MainMenu);
+        //     }
+        //     _ => {}
+        // }
     }
     if input.just_pressed(KeyCode::KeyQ) {
         info!("'Q' just released");
@@ -207,6 +222,14 @@ fn keyboard_input(
     }
     if input.just_released(KeyCode::Tab) {
         // *active_camera = game::ActiveCamera::Primary;
+    }
+    if input.just_pressed(KeyCode::Escape) {
+        // match console_state.get() {
+        //     console::ConsoleState::IsUsingConsole => {
+        //         next_console_state.set(console::ConsoleState::IsNotUsingConsole);
+        //     }
+        //     _ => {}
+        // }
     }
 }
 
