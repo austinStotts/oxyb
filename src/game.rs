@@ -38,7 +38,8 @@ pub struct PlayerBody;
 #[derive(Component)]
 pub struct CameraRef;
 
-
+#[derive(Component)]
+pub struct Furniture;
 
 
 
@@ -147,13 +148,29 @@ pub fn game_setup(
     });
 
     // Spawn the object as a PBR entity (adjust if needed):
-    let transform: Transform = Transform {
-        translation: vec3(0.0, 0.0, -1.0),
+    let mut transform: Transform = Transform {
+        translation: vec3(0.0, 0.3, -1.0),
         scale: vec3(0.25, 0.25, 0.25),
         rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI)
     };
 
+
+    transform.rotate_y(0.17);
+
     console::spawn_console(transform, String::from("primary"), &asset_server, &mut commands, &mut meshes, &mut materials);
+
+
+    let transform2 = Transform {
+        translation: vec3(0.0, 0.0, -0.6),
+        scale: vec3(0.25, 0.15, 0.35),
+        ..default()
+    };
+
+    let table = commands.spawn(SceneBundle {
+        scene: asset_server.load("objects/table2.gltf#Scene0"),
+        transform: transform2,
+        ..default()
+    }).insert(Furniture).id();
 
     // let transform2: Transform = Transform {
     //     translation: vec3(2.0, 0.0, -1.0),

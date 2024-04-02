@@ -76,7 +76,7 @@ pub fn update_terminal(
         text_list.push(&line);
     }
 
-    let mesh = get_text_mesh("hello world");
+    let mesh = get_text_mesh("goodbye world");
     let scale = vec3(0.05, 0.05, 0.05);
 
     let bundle = PbrBundle {
@@ -225,7 +225,7 @@ pub fn spawn_console(
     // ];
 
     
-    let mesh = get_text_mesh("hello world");
+    let mesh = get_text_mesh("");
     let scale = vec3(0.05, 0.05, 0.05);
 
     // create the screen element to attatch the text children to
@@ -245,7 +245,7 @@ pub fn spawn_console(
 
     // create the default bundle for the text
     let bundle = PbrBundle {
-        mesh: meshes.add(mesh.clone()),
+        mesh: meshes.add(mesh),
         material: materials.add(Color::rgb(0.1, 1.0, 0.1)),
         transform: Transform {
             translation: vec3(0.0, 1.6, 0.0), 
