@@ -95,8 +95,9 @@ pub fn update_terminal(
 pub fn use_console(
     mut terminal: ResMut<Terminal>,
     mut current_command: ResMut<CurrentCommand>,
-    console_state: Res<State<ConsoleState>>,
+    mut console_state: Res<State<ConsoleState>>,
     input: Res<ButtonInput<KeyCode>>,
+    mut next_console_state: ResMut<NextState<ConsoleState>>,
 ) {
 
 
@@ -104,93 +105,106 @@ pub fn use_console(
 
     match console_state.get() {
         ConsoleState::IsUsingConsole => {
+
             for key in input.get_just_pressed() {
                 println!("{}", current_command.text);
-                match key {
-                    KeyCode::KeyA => { current_command.text.push_str("a") }
-                    KeyCode::KeyB => { current_command.text.push_str("b") }
-                    KeyCode::KeyC => { current_command.text.push_str("c") }
-                    KeyCode::KeyD => { current_command.text.push_str("d") }
-                    KeyCode::KeyE => { current_command.text.push_str("e") }
-                    KeyCode::KeyF => { current_command.text.push_str("f") }
-                    KeyCode::KeyG => { current_command.text.push_str("g") }
-                    KeyCode::KeyH => { current_command.text.push_str("h") }
-                    KeyCode::KeyI => { current_command.text.push_str("i") }
-                    KeyCode::KeyJ => { current_command.text.push_str("j") }
-                    KeyCode::KeyK => { current_command.text.push_str("k") }
-                    KeyCode::KeyL => { current_command.text.push_str("l") }
-                    KeyCode::KeyM => { current_command.text.push_str("m") }
-                    KeyCode::KeyN => { current_command.text.push_str("n") }
-                    KeyCode::KeyO => { current_command.text.push_str("o") }
-                    KeyCode::KeyP => { current_command.text.push_str("p") }
-                    KeyCode::KeyQ => { current_command.text.push_str("q") }
-                    KeyCode::KeyR => { current_command.text.push_str("r") }
-                    KeyCode::KeyS => { current_command.text.push_str("s") }
-                    KeyCode::KeyT => { current_command.text.push_str("t") }
-                    KeyCode::KeyU => { current_command.text.push_str("u") }
-                    KeyCode::KeyV => { current_command.text.push_str("v") }
-                    KeyCode::KeyW => { current_command.text.push_str("w") }
-                    KeyCode::KeyX => { current_command.text.push_str("x") }
-                    KeyCode::KeyY => { current_command.text.push_str("y") }
-                    KeyCode::KeyZ => { current_command.text.push_str("z") }
-                    KeyCode::Digit0 => { current_command.text.push_str("0") }
-                    KeyCode::Digit1 => { current_command.text.push_str("1") }
-                    KeyCode::Digit2 => { current_command.text.push_str("2") }
-                    KeyCode::Digit3 => { current_command.text.push_str("3") }
-                    KeyCode::Digit4 => { current_command.text.push_str("4") }
-                    KeyCode::Digit5 => { current_command.text.push_str("5") }
-                    KeyCode::Digit6 => { current_command.text.push_str("6") }
-                    KeyCode::Digit7 => { current_command.text.push_str("7") }
-                    KeyCode::Digit8 => { current_command.text.push_str("8") }
-                    KeyCode::Digit9 => { current_command.text.push_str("9") }
-                    KeyCode::Space => { current_command.text.push_str(" ") }
-                    KeyCode::Backspace => { current_command.text.pop(); }
-                    KeyCode::ShiftRight => { terminal.text.push(String::from("HELLO WORLD")) }
-                    KeyCode::ControlRight => { terminal.text.pop(); }
-                    // KeyCode::KeyA => { current_command.text.push_str("a") }
-                    // KeyCode::KeyA => { current_command.text.push_str("a") }
-                    // KeyCode::KeyA => { current_command.text.push_str("a") }
-                    // KeyCode::KeyA => { current_command.text.push_str("a") }
-                    // KeyCode::KeyA => { current_command.text.push_str("a") }
-                    // KeyCode::KeyA => { current_command.text.push_str("a") }
-                    // KeyCode::KeyA => { current_command.text.push_str("a") }
-                    // KeyCode::KeyA => { current_command.text.push_str("a") }
-                    // KeyCode::KeyA => { current_command.text.push_str("a") }
-                    // KeyCode::KeyA => { current_command.text.push_str("a") }
-                    // KeyCode::KeyA => { current_command.text.push_str("a") }
-                    // KeyCode::KeyA => { current_command.text.push_str("a") }
-                    // KeyCode::KeyA => { current_command.text.push_str("a") }
-
-                    KeyCode::Enter => { 
-    
-                        let command = current_command.text.clone();
-                        terminal.text.push(current_command.text.clone());
-                        current_command.text = String::from("");
-
-                        if command.eq("clear") {
-                            println!("CLEAR COMMAND");
-                            terminal.text = Vec::new();
+                if input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
+                    // shift is held
+                    for key in input.get_just_pressed() {
+                        match key {
+                            KeyCode::Digit0 => { current_command.text.push_str("!") }
+                            KeyCode::Digit1 => { current_command.text.push_str("@") }
+                            KeyCode::Digit2 => { current_command.text.push_str("#") }
+                            KeyCode::Digit3 => { current_command.text.push_str("$") }
+                            KeyCode::Digit4 => { current_command.text.push_str("%") }
+                            KeyCode::Digit5 => { current_command.text.push_str("^") }
+                            KeyCode::Digit6 => { current_command.text.push_str("&") }
+                            KeyCode::Digit7 => { current_command.text.push_str("*") }
+                            KeyCode::Digit8 => { current_command.text.push_str("(") }
+                            KeyCode::Digit9 => { current_command.text.push_str(")") }
+                            KeyCode::Slash => { current_command.text.push_str("?") }
+                            KeyCode::Comma => { current_command.text.push_str("<") }
+                            KeyCode::Period => { current_command.text.push_str(">") }
+                            KeyCode::Semicolon => { current_command.text.push_str(":") }
+                            KeyCode::Quote => { current_command.text.push_str("\"") }
+                            KeyCode::BracketLeft => { current_command.text.push_str("{") }
+                            KeyCode::BracketRight => { current_command.text.push_str("}") }
+                            KeyCode::Backslash => { current_command.text.push_str("|") }
+                            KeyCode::Minus => { current_command.text.push_str("_") }
+                            KeyCode::Equal => { current_command.text.push_str("+") }
+                            _ => {}
                         }
+                    }
+                } else {
+                    for key in input.get_just_pressed() {
 
-
-
-
-                     }
-                    _ => {}
+                        match key {
+                            KeyCode::KeyA => { current_command.text.push_str("a") }
+                            KeyCode::KeyB => { current_command.text.push_str("b") }
+                            KeyCode::KeyC => { current_command.text.push_str("c") }
+                            KeyCode::KeyD => { current_command.text.push_str("d") }
+                            KeyCode::KeyE => { current_command.text.push_str("e") }
+                            KeyCode::KeyF => { current_command.text.push_str("f") }
+                            KeyCode::KeyG => { current_command.text.push_str("g") }
+                            KeyCode::KeyH => { current_command.text.push_str("h") }
+                            KeyCode::KeyI => { current_command.text.push_str("i") }
+                            KeyCode::KeyJ => { current_command.text.push_str("j") }
+                            KeyCode::KeyK => { current_command.text.push_str("k") }
+                            KeyCode::KeyL => { current_command.text.push_str("l") }
+                            KeyCode::KeyM => { current_command.text.push_str("m") }
+                            KeyCode::KeyN => { current_command.text.push_str("n") }
+                            KeyCode::KeyO => { current_command.text.push_str("o") }
+                            KeyCode::KeyP => { current_command.text.push_str("p") }
+                            KeyCode::KeyQ => { current_command.text.push_str("q") }
+                            KeyCode::KeyR => { current_command.text.push_str("r") }
+                            KeyCode::KeyS => { current_command.text.push_str("s") }
+                            KeyCode::KeyT => { current_command.text.push_str("t") }
+                            KeyCode::KeyU => { current_command.text.push_str("u") }
+                            KeyCode::KeyV => { current_command.text.push_str("v") }
+                            KeyCode::KeyW => { current_command.text.push_str("w") }
+                            KeyCode::KeyX => { current_command.text.push_str("x") }
+                            KeyCode::KeyY => { current_command.text.push_str("y") }
+                            KeyCode::KeyZ => { current_command.text.push_str("z") }
+                            KeyCode::Digit0 => { current_command.text.push_str("0") }
+                            KeyCode::Digit1 => { current_command.text.push_str("1") }
+                            KeyCode::Digit2 => { current_command.text.push_str("2") }
+                            KeyCode::Digit3 => { current_command.text.push_str("3") }
+                            KeyCode::Digit4 => { current_command.text.push_str("4") }
+                            KeyCode::Digit5 => { current_command.text.push_str("5") }
+                            KeyCode::Digit6 => { current_command.text.push_str("6") }
+                            KeyCode::Digit7 => { current_command.text.push_str("7") }
+                            KeyCode::Digit8 => { current_command.text.push_str("8") }
+                            KeyCode::Digit9 => { current_command.text.push_str("9") }
+                            KeyCode::Slash => { current_command.text.push_str("/") }
+                            KeyCode::Comma => { current_command.text.push_str(",") }
+                            KeyCode::Period => { current_command.text.push_str(".") }
+                            KeyCode::Semicolon => { current_command.text.push_str(";") }
+                            KeyCode::Quote => { current_command.text.push_str("'") }
+                            KeyCode::BracketLeft => { current_command.text.push_str("[") }
+                            KeyCode::BracketRight => { current_command.text.push_str("]") }
+                            KeyCode::Backslash => { current_command.text.push_str("\\") }
+                            KeyCode::Minus => { current_command.text.push_str("-") }
+                            KeyCode::Equal => { current_command.text.push_str("=") }
+                            KeyCode::Space => { current_command.text.push_str(" ") }
+                            KeyCode::Backspace => { current_command.text.pop(); }
+                            KeyCode::Enter => { 
+            
+                                let command = current_command.text.clone();
+                                terminal.text.push(current_command.text.clone());
+                                current_command.text = String::from("");
+        
+                                if command.to_lowercase().eq("clear") {
+                                    println!("CLEAR COMMAND");
+                                    terminal.text = Vec::new();
+                                }
+                                else if command.to_lowercase().eq("exit") {
+                                    next_console_state.set(ConsoleState::IsNotUsingConsole);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
                 }
-                // make a holder for the inputs. use enter to submit
-                // somehow display the unfinished command with the other lines.
-                // shouldnt be that hard
-                // this is getting really complicated but i think as long as it is it's own system it should be fine.
-                // maybe have 2 "screen"s 
-                // show all the rows that are currently in the list
-                // then show the value of the current unsubmitted command
-                // or 1 screen but after the for loop to add the history lines it shows the new command line
-                // it will be ">" by default
-
-                // when user presses enter take value of currentCommand and add it to terminaltext
-                // at the same time, check if valid command and do the command.
-                // if not do nothing.
             }
         }
         _ => {}
