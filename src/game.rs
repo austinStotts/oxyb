@@ -1,7 +1,7 @@
 use std::{default, f32::consts::PI, iter::once};
 // use bevy_flycam::prelude::*;
 use bevy::{
-    ecs::system::{Command, RunSystemOnce, SystemId}, math::vec3, prelude::*, render::camera::Viewport, transform::{self, TransformSystem}, winit::WinitSettings
+    ecs::{entity, system::{Command, RunSystemOnce, SystemId}}, math::vec3, prelude::*, render::camera::Viewport, transform::{self, TransformSystem}, winit::WinitSettings
 };
 // use bevy_flycam::prelude::*;
 // use map::{Room, Rotation};
@@ -10,7 +10,7 @@ use bevy::window::{CursorGrabMode, PrimaryWindow};
 use crate::{camera::*, postprocessing};
 use crate::map;
 use crate::console;
-use bevy_rapier3d::prelude::*;
+use bevy_rapier3d::{parry::query::Ray, prelude::*};
 
 
 
@@ -87,6 +87,8 @@ pub fn game_setup(
         ..Default::default()
     });
 
+    commands.spawn(PerfUiCompleteBundle::default());
+
     // main camera
     commands.spawn((
         Camera3dBundle {
@@ -114,32 +116,32 @@ pub fn game_setup(
         DespawnOnExit,
     ));
 
-    commands.spawn(PerfUiEntryFPS::default()).insert(DespawnOnExit);
+    
     // commands.spawn(PerfUiRoot {}).insert(DespawnOnExit);
 
     // SECONDARY CAMERA
-    commands.spawn((
-        Camera3dBundle {
-            transform: Transform::from_translation(Vec3::new(20.0, 0.0, 24.0))
-                .looking_at(Vec3 { x: 20.0, y: 0.0, z: 20.0 }, Vec3::Y),
-            projection: Projection::Orthographic(OrthographicProjection { scale: 0.04, ..Default::default()}),
-            camera: Camera {
-                viewport: Some(Viewport {
-                    physical_position: UVec2 { x: (window_size.0 as u32 - 150), y: (0) },
-                    physical_size: UVec2 { x: 150, y: 150 },
-                    ..Default::default()
-                }),
-                clear_color: Color::BLACK.into(),
-                order: 1,
-                is_active: true,
-                ..default()
+    // commands.spawn((
+    //     Camera3dBundle {
+    //         transform: Transform::from_translation(Vec3::new(20.0, 0.0, 24.0))
+    //             .looking_at(Vec3 { x: 20.0, y: 0.0, z: 20.0 }, Vec3::Y),
+    //         projection: Projection::Orthographic(OrthographicProjection { scale: 0.04, ..Default::default()}),
+    //         camera: Camera {
+    //             viewport: Some(Viewport {
+    //                 physical_position: UVec2 { x: (window_size.0 as u32 - 150), y: (0) },
+    //                 physical_size: UVec2 { x: 150, y: 150 },
+    //                 ..Default::default()
+    //             }),
+    //             clear_color: Color::BLACK.into(),
+    //             order: 1,
+    //             is_active: true,
+    //             ..default()
 
-            },
-            ..default()
-        },
-        SecondCamera,
-        DespawnOnExit,
-    ));
+    //         },
+    //         ..default()
+    //     },
+    //     SecondCamera,
+    //     DespawnOnExit,
+    // ));
 
     let mut rooms: Vec<map::Room> = map::generate_map(3);
     map::spawn_cubes_from_matrix(&mut commands, &mut meshes, &mut materials, &mut rooms, (20.0, 0.0, 20.0));
@@ -176,25 +178,11 @@ pub fn game_setup(
         transform: transform2,
         ..default()
     }).insert(Furniture).id();
-
-    // let transform2: Transform = Transform {
-    //     translation: vec3(2.0, 0.0, -1.0),
-    //     scale: vec3(0.25, 0.25, 0.25),
-    //     rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI)
-    // };
-
-    // console::spawn_console(transform2, String::from("secondary"), &asset_server, &mut commands, &mut meshes, &mut materials);
-
-    // let transform3: Transform = Transform {
-    //     translation: vec3(4.0, 0.0, -1.0),
-    //     scale: vec3(0.25, 0.25, 0.25),
-    //     rotation: Quat::from_axis_angle(vec3(0.0, 1.0, 0.0), PI)
-    // };
-
-    // console::spawn_console(transform3, String::from("alternate"), &asset_server, &mut commands, &mut meshes, &mut materials);
-
-
 }
+
+
+
+//                                                           SETUP PHYSICS
 
 pub fn setup_physics(mut commands: Commands) {
     /* Create the ground. */
@@ -226,6 +214,7 @@ pub fn update_player_camera(
 }
 
 
+//                                                    SPAWN NEW MAP
 pub fn spawn_new_map(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -253,6 +242,7 @@ pub fn update_settings(mut settings: Query<&mut postprocessing::PostProcessSetti
 
 
 
+//                                           MAKE DEFAULT DIRECTORY
 
 pub fn make_defualt_directory () -> console::GameDirectory {
     
@@ -265,7 +255,6 @@ pub fn make_defualt_directory () -> console::GameDirectory {
     _=root.root.add_dir(String::from("root/programs/")).unwrap();
     _=root.root.add_dir(String::from("root/files/")).unwrap();
 
-    // let mut r1 = root.root.clone();
     let users = root.root.get_dir("root/users/").unwrap();
     _=users.add_dir(String::from("root/users/steve/")).unwrap();
     _=users.add_dir(String::from("root/users/sumi/")).unwrap();
@@ -274,23 +263,15 @@ pub fn make_defualt_directory () -> console::GameDirectory {
     _=programs.add_program(String::from("root/programs/save.exe")).unwrap();
     _=programs.add_program(String::from("root/programs/decend.exe")).unwrap();
 
+    let files = root.root.get_dir("root/files/").unwrap();
+    _=files.add_dir(String::from("root/files/floors/")).unwrap();
+    _=files.add_dir(String::from("root/files/enemies/")).unwrap();
+    _=files.add_dir(String::from("root/files/items/")).unwrap();
 
-
-    // let mut system =
-    // let mut programs =
-    // let mut files =
-
-    // let mut steve = users.add_child(String::from("root/users/steve/")).unwrap();
-    // let mut sumi = users.add_child(String::from("root/users/sumi/")).unwrap();
-
-    // let mut os = system.add_child(String::from("root/system/os/")).unwrap();
-    // let mut logs = system.add_child(String::from("root/system/logs/")).unwrap();
-
-    // let mut decend = programs.add_child(String::from("root/programs/decend.exe")).unwrap();
-    // let mut save = programs.add_child(String::from("root/programs/sace.exe")).unwrap();
-
-    // let mut floors = files.add_child(String::from("root/files/floors/")).unwrap();
-
+    let floors = files.get_dir("root/files/floors/").unwrap();
+    _=floors.add_file(String::from("root/files/floors/1.txt")).unwrap();
+    _=floors.add_file(String::from("root/files/floors/2.txt")).unwrap();
+    _=floors.add_file(String::from("root/files/floors/3.txt")).unwrap();
 
     return root;
 }
@@ -298,80 +279,45 @@ pub fn make_defualt_directory () -> console::GameDirectory {
 
 
 
+#[derive(Component)]
+pub enum InteractionType {
+    Console,
+    Item,
+    Door
+}
 
 
 
+#[derive(Component)]
+pub struct Interactable;
 
 
-
-
-
-//                                                              SWITCH CAMERAS
-// pub fn switch_cameras(
-//     mut active_camera: ResMut<ActiveCamera>,
-//     mut main_camera: Query<(Entity, &mut Camera), With<MainCamera>>, 
-//     mut secondary_camera: Query<&mut Camera, Without<MainCamera>>,
-//     // mut camera_entity: Query< With<MainCamera>>,
-//     mut commands: Commands,
-//     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
-// ) {
-
-
-//     let mut window_size: (f32, f32) = (0.0, 0.0);
-
-//     if let Ok(mut window) = primary_window.get_single_mut() {
-//         window_size = (window.width(), window.height());
-//         toggle_grab_cursor(&mut window);
-//     } else {
-//         warn!("Primary window not found for `initial_grab_cursor`!");
-//     }
-
-//     // set main camera
-//     for (entity, mut camera) in main_camera.iter_mut() {
-//         match *active_camera {
-//             ActiveCamera::Primary => {
-//                 camera.is_active = true;
-//                 commands.entity(entity).insert(FlyCam);
-//             },
-//             ActiveCamera::Secondary => {
-//                 camera.is_active = false;
-//                 commands.entity(entity).remove::<FlyCam>();
-//             },
-//         }
-//     }
-
-//     // set other cameras
-//     for mut camera in secondary_camera.iter_mut() {
-//         match *active_camera {
-//             ActiveCamera::Primary => {
-//                 // camera.is_active = false;
-//                 // camera.viewport = Some(Viewport {
-//                 //     physical_position: UVec2 { x: (window_size.0 as u32 - 100), y: (0) },
-//                 //     physical_size: UVec2 { x: 100, y: 100 },
-//                 //     ..Default::default()
-//                 // })
-//                 let cam = camera.clone();
-//                 let viewport = cam.viewport.unwrap();
-//                 if viewport.physical_position.x != (window_size.0 as u32 - 100) {
-//                     camera.viewport = Some(Viewport {
-//                         physical_position: UVec2 { x: (window_size.0 as u32 - 100), y: (0) },
-//                         physical_size: UVec2 { x: 100, y: 100 },
-//                         ..Default::default()
-//                     })
-//                 }
-//             },
-//             ActiveCamera::Secondary => {
-//                 // camera.is_active = true;
-//                 let cam = camera.clone();
-//                 let viewport = cam.viewport.unwrap();
-//                 if viewport.physical_size.x != (window_size.0 as u32) {
-//                     camera.viewport = Some(Viewport::default());
-//                 }
-//             },
-//         }
-//     }
-
-// }
-
-
-
+pub fn check_for_interactions(
+    player_query: Query<(&GlobalTransform, &Camera), With<MainCamera>>,
+    interaction_query: Query<(&GlobalTransform, &InteractionType, Entity), With<Interactable>>,
+    rapier_context: Res<RapierContext>,
+    player_collider: Query<Entity, With<PlayerBody>>,
+) {
+    
+    for (player_transform, camera) in player_query.iter() {
+        let mut ray_direction = camera.world_to_ndc(player_transform, Vec3::Z).expect("could not get camera");
+        // println!("ray direction: {}", ray_direction);
+        if let Ok(pc) = player_collider.get_single() {
+            let qf = QueryFilter::new();
+            if let Some((entity, toi)) = rapier_context.cast_ray(player_transform.translation(), ray_direction, 100.0, true, QueryFilter::exclude_collider(qf, pc)) {
+                for (interactable_tansform, interaction_type, target_entity) in interaction_query.iter() {
+                    let distance = player_transform.translation().distance(interactable_tansform.translation());
+                    // println!("toi: {}", toi);
+                    if distance < 3.0 {
+                        match interaction_type {
+                            InteractionType::Console => {
+                                println!("looking at console! d:{}", distance);
+                            }
+                            _=>{}
+                        }
+                    } 
+                }
+            }else { println!("ERROR IN RAYCAST") }
+        }
+    }   
+}

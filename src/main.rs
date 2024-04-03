@@ -7,7 +7,7 @@ use bevy::{
     math::vec3, 
     prelude::*, transform::TransformSystem, winit::WinitSettings,
 };
-use camera::prelude::game::MainCamera;
+use camera::prelude::game::{check_for_interactions, MainCamera};
 // use bevy_flycam::prelude::*;
 use map::{Room, Rotation};
 use iyes_perf_ui::prelude::*;
@@ -93,6 +93,7 @@ fn main() {
             keyboard_input,
             game::update_player_camera,
             console::use_console,
+            check_for_interactions,
             // game::switch_cameras,
         ).run_if(in_state(mainmenu::GameState::Game)))
         .add_systems(PostUpdate, (console::update_terminal).run_if(in_state(mainmenu::GameState::Game)))
