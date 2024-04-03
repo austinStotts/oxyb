@@ -190,7 +190,8 @@ pub fn use_console(
                             KeyCode::Enter => { 
             
                                 let command = current_command.text.clone();
-                                terminal.text.push(current_command.text.clone());
+                                // let c = String::from("$");
+                                terminal.text.push("$ ".to_owned() + &current_command.text.clone());
                                 current_command.text = String::from("");
         
                                 if command.to_lowercase().eq("clear") {
@@ -199,6 +200,18 @@ pub fn use_console(
                                 }
                                 else if command.to_lowercase().eq("exit") {
                                     next_console_state.set(ConsoleState::IsNotUsingConsole);
+                                }
+                                if command.to_lowercase().eq("hello") {
+                                    println!("HELLO COMMAND");
+                                    terminal.text.push(make_hello());
+                                }
+                                if command.to_lowercase().eq("ls") { // ls
+                                    println!("list directory COMMAND");
+                                    terminal_list();
+                                }
+                                if command.to_lowercase().starts_with("cd ") { // cd
+                                    println!("move COMMAND");
+                                    terminal.text.push(make_hello());
                                 }
                             }
                             _ => {}
@@ -373,3 +386,93 @@ fn get_text_pos(bundle: &mut PbrBundle, index: usize) -> PbrBundle {
 
     return new_bundle;
 }
+
+
+
+
+use std::collections::HashMap;
+
+// A node representing a directory
+struct Directory {
+    name: String,
+    children: HashMap<String, Directory>, // Map of child directory names to Directory structs
+}
+
+impl Directory {
+    fn new(name: String) -> Self {
+        Directory {
+            name,
+            children: HashMap::new(),
+        }
+    }
+
+    fn add_child(&mut self, name: String) -> Result<(), String> {
+        let n = name.clone();
+        if self.children.contains_key(&name) {
+            Err(format!("Directory with name '{}' already exists", &name))
+        } else {
+            self.children.insert(name, Directory::new(n));
+            Ok(())
+        }
+    }
+
+    fn delete_child(&mut self, name: &str) -> Result<(), String> {
+        if let Some(_child) = self.children.remove(name) {
+            Ok(())
+        } else {
+            Err(format!("Directory with name '{}' not found", name))
+        }
+    }
+
+    fn cd(&mut self, path: &str) -> Result<&Directory, String> {
+        let mut current_dir = self;
+
+        for dir_name in path.split('/') {
+            match dir_name {
+                "." => continue, // Stay in the current directory
+                ".." => {
+                    return Err("Cannot go beyond the root directory".to_string());
+                    // We'll assume you have a root and cannot go beyond it
+                }
+                name => {
+                    current_dir = current_dir.children.get_mut(name)
+                        .ok_or_else(|| format!("Directory not found: {}", name))?;
+                }
+            }
+        }
+
+        Ok(current_dir)
+    }
+
+    fn ls(&self) {
+        if self.children.is_empty() {
+            println!("(empty)");
+        } else {
+            for child_name in self.children.keys() {
+                let v = child_name.split("/");
+                let name = v.last().unwrap();
+                println!("{}", name);
+            }
+        }
+    }
+}
+
+fn terminal_list()
+{
+    let mut root = Directory::new(String::from("root"));
+    root.add_child(String::from("root/user"));
+    root.add_child(String::from("root/programs"));
+    root.add_child(String::from("root/files"));
+    root.add_child(String::from("root/system"));
+
+    root.ls();
+} 
+
+fn make_hello() -> String {
+    return String::from("hello, my name is sumi :3");
+}
+
+// very happy with this
+// need to add the root to the world resources
+// need to format the outputs
+// need to make it happen!

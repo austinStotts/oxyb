@@ -72,7 +72,7 @@ fn main() {
             // console::ConsolePlugin,
         ))
         .insert_resource(console::Terminal { text: vec![String::from("universal instruction terminal v0.2.3")] })
-        .insert_resource(console::CurrentCommand { text: String::from("> ") })
+        .insert_resource(console::CurrentCommand { text: String::from("") })
         .insert_resource(game::ActiveCamera::Primary)
         .init_state::<mainmenu::GameState>()
         .init_state::<console::ConsoleState>()
