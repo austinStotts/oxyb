@@ -60,6 +60,11 @@ pub fn game_setup(
     asset_server: Res<AssetServer>,
 ) {
 
+    let root = make_defualt_directory();
+    let dir = root.root.clone();
+    commands.insert_resource(root);
+    commands.insert_resource(console::CurrentDirectory(dir));
+
 
     let mut window_size: (f32, f32) = (0.0, 0.0);
 
@@ -243,6 +248,63 @@ pub fn update_settings(mut settings: Query<&mut postprocessing::PostProcessSetti
         setting.intensity = intensity;
     }
 }
+
+
+
+
+
+
+pub fn make_defualt_directory () -> console::GameDirectory {
+    
+    let mut root = console::GameDirectory {
+        root: console::Directory::new(String::from("root/"))
+    };
+
+    _=root.root.add_dir(String::from("root/users/")).unwrap();
+    _=root.root.add_dir(String::from("root/system/")).unwrap();
+    _=root.root.add_dir(String::from("root/programs/")).unwrap();
+    _=root.root.add_dir(String::from("root/files/")).unwrap();
+
+    // let mut r1 = root.root.clone();
+    let users = root.root.get_dir("root/users/").unwrap();
+    _=users.add_dir(String::from("root/users/steve/")).unwrap();
+    _=users.add_dir(String::from("root/users/sumi/")).unwrap();
+
+    let programs = root.root.get_dir("root/programs/").unwrap();
+    _=programs.add_program(String::from("root/programs/save.exe")).unwrap();
+    _=programs.add_program(String::from("root/programs/decend.exe")).unwrap();
+
+
+
+    // let mut system =
+    // let mut programs =
+    // let mut files =
+
+    // let mut steve = users.add_child(String::from("root/users/steve/")).unwrap();
+    // let mut sumi = users.add_child(String::from("root/users/sumi/")).unwrap();
+
+    // let mut os = system.add_child(String::from("root/system/os/")).unwrap();
+    // let mut logs = system.add_child(String::from("root/system/logs/")).unwrap();
+
+    // let mut decend = programs.add_child(String::from("root/programs/decend.exe")).unwrap();
+    // let mut save = programs.add_child(String::from("root/programs/sace.exe")).unwrap();
+
+    // let mut floors = files.add_child(String::from("root/files/floors/")).unwrap();
+
+
+    return root;
+}
+
+
+
+
+
+
+
+
+
+
+
 
 //                                                              SWITCH CAMERAS
 // pub fn switch_cameras(

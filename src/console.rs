@@ -1,5 +1,5 @@
 use std::f32::consts::PI;
-
+use std::collections::HashMap;
 use bevy::{core_pipeline::core_3d::graph::input, prelude::*, render::render_asset::RenderAssetUsages, transform::commands};
 use bevy_ui::prelude::*;
 use bevy::math::vec3;
@@ -8,7 +8,7 @@ use meshtext::{MeshGenerator, MeshText, TextSection};
 
 #[derive(Component)]
 pub struct ActiveTerminal {
-    pub Id: String
+    pub id: String
 }
 
 #[derive(Component)]
@@ -36,6 +36,7 @@ pub enum ConsoleState {
     IsNotUsingConsole,
     IsUsingConsole,
 }
+
 
 
 pub struct ConsolePlugin;
@@ -95,6 +96,8 @@ pub fn update_terminal(
 pub fn use_console(
     mut terminal: ResMut<Terminal>,
     mut current_command: ResMut<CurrentCommand>,
+    mut root: ResMut<GameDirectory>,
+    mut current_directory: ResMut<CurrentDirectory>,
     mut console_state: Res<State<ConsoleState>>,
     input: Res<ButtonInput<KeyCode>>,
     mut next_console_state: ResMut<NextState<ConsoleState>>,
@@ -207,11 +210,72 @@ pub fn use_console(
                                 }
                                 if command.to_lowercase().eq("ls") { // ls
                                     println!("list directory COMMAND");
-                                    terminal_list();
+                                    let cd = current_directory.0.clone();
+                                    terminal.text.push(cd.name.clone());
+                                    let list_values = terminal_list(cd);
+                                    let list = list_values.0;
+                                    if list.len() > 0 && list_values.1.len() > 0 {
+                                        for (i, line) in list.iter().enumerate() {
+                                            let length = format!("[{}]", list_values.1[i]);
+                                            terminal.text.push(length + &line);
+                                        }
+                                    } else {
+                                        terminal.text.push(String::from("~ empty"));
+                                    }
+
                                 }
                                 if command.to_lowercase().starts_with("cd ") { // cd
                                     println!("move COMMAND");
-                                    terminal.text.push(make_hello());
+
+                                    let new_dir = command.split(" ").last().unwrap();
+                                    println!("{new_dir}");
+                                    if new_dir == ".." {
+                                        let cd = current_directory.0.clone();
+                                        println!("{}", cd.name);
+                                        let mut parent: Vec<&str> = cd.name.split("/").collect();
+                                        if parent.len() <= 2 {
+                                            println!("! current directory is root");
+                                        } else {
+                                            _=parent.pop();
+                                            _=parent.pop();
+                                            let mut new_dir = String::from("");
+                                            for item in parent {
+                                                new_dir = format!("{}{}/", new_dir, item);
+                                            }
+                                            if new_dir.eq("root/") {
+                                                current_directory.0 = root.root.clone();
+                                                terminal.text.push(String::from("root/"));
+                                            } else {
+                                                println!("moveing to: {}", new_dir);
+                                                match root.root.find_child_dir(&new_dir) {
+                                                    Some(dir) => {
+                                                        let name = dir.name.clone();
+                                                        current_directory.0 = dir.to_owned();
+                                                        terminal.text.push(name);
+                                                    },
+                                                    None => {
+                                                        terminal.text.push(String::from("! error moving to new directory"))
+                                                    },
+                                                }
+                                            }
+                                        }
+
+                                    }
+                                    else {
+                                        match current_directory.0.cd(new_dir) {
+                                            Ok(cd) => {
+                                                let name = cd.name.clone();
+                                                current_directory.0 = cd.to_owned();
+                                                terminal.text.push(name);
+                                            },
+                                            Err(_) => {
+                                                terminal.text.push(String::from("! could not find directory"))
+                                            },
+                                        };
+                                    }
+
+
+                                    // terminal.text.push(make_hello());
                                 }
                             }
                             _ => {}
@@ -227,7 +291,7 @@ pub fn use_console(
 
 pub fn spawn_console(
     transform: Transform,
-    Id: String,
+    id: String,
     asset_server: & Res<AssetServer>,
     mut commands: &mut Commands,
     mut meshes: &mut ResMut<Assets<Mesh>>,
@@ -256,7 +320,7 @@ pub fn spawn_console(
         ..default()
     })
     .insert(ConsoleTerminal)
-    .insert(ActiveTerminal{Id}).id();
+    .insert(ActiveTerminal{id}).id();
 
 
     // let screen = commands.spawn(TextMeshBundle {
@@ -389,34 +453,123 @@ fn get_text_pos(bundle: &mut PbrBundle, index: usize) -> PbrBundle {
 
 
 
+#[derive(Resource)]
+pub struct GameDirectory {
+    pub root: Directory
+}
 
-use std::collections::HashMap;
+#[derive(Resource)]
+pub struct CurrentDirectory(pub Directory);
+
+#[derive(Clone)]
+pub enum Node {
+    Directory(Directory),
+    Program(Program),
+    File(File)
+}
+
+#[derive(Clone)]
+pub struct Program {
+    name: String
+}
+
+#[derive(Clone)]
+pub struct File {
+    name: String
+}
 
 // A node representing a directory
-struct Directory {
-    name: String,
-    children: HashMap<String, Directory>, // Map of child directory names to Directory structs
+#[derive(Clone)]
+pub struct Directory {
+    pub name: String,
+    pub children: HashMap<String, Node>, // Map of child directory names to Directory structs
 }
 
 impl Directory {
-    fn new(name: String) -> Self {
+    pub fn new(name: String) -> Self {
         Directory {
             name,
             children: HashMap::new(),
         }
     }
 
-    fn add_child(&mut self, name: String) -> Result<(), String> {
+    pub fn add_dir(&mut self, name: String) -> Result<(), String> {
         let n = name.clone();
         if self.children.contains_key(&name) {
             Err(format!("Directory with name '{}' already exists", &name))
         } else {
-            self.children.insert(name, Directory::new(n));
+            let mut new_dir = Directory::new(n);
+            self.children.insert(name, Node::Directory(new_dir));
             Ok(())
         }
     }
 
-    fn delete_child(&mut self, name: &str) -> Result<(), String> {
+    pub fn add_program(&mut self, name: String) -> Result<(), String> {
+        let n = name.clone();
+        if self.children.contains_key(&name) {
+            Err(format!("Directory with name '{}' already exists", &name))
+        } else {
+            let mut new_program = Program { name: name.clone() };
+            self.children.insert(name, Node::Program(new_program));
+            Ok(())
+        }
+    }
+
+    pub fn get_child(&mut self, name: &str) -> Option<&mut Node> {
+        let child = self.children.get_mut(name);
+        return child;
+    }
+
+    pub fn get_dir(&mut self, name: &str) -> Option<&mut Directory> {
+        let child = self.children.get_mut(name);
+        match child {
+            Some(node) => {
+                match node {
+                    Node::Directory(dir) => {
+                        return Some(dir);
+                    }
+                    _ => { None }
+                }
+            },
+            None => { None },
+        }
+        // return child;
+    }
+
+    pub fn find_child_dir(&mut self, name: &str) -> Option<Directory> {
+        if self.children.clone().contains_key(name) {
+            match self.clone().get_child(name) {
+                Some(node) => {
+                    match node {
+                        Node::Directory(dir) => {
+                            return Some(dir.clone());
+                        }
+                        _ => {}
+                    }
+                },
+                None => {},
+            }
+            
+        }
+
+        for (_, child) in &mut self.children {
+            match child {
+                Node::Directory(dir) => {
+                    return dir.find_child_dir(name);
+                }
+                _ => {
+
+                }
+            }
+            // if let Some(found_dir) = child_dir.find_child(name) {
+            //     return Some(found_dir);
+            // }
+        }
+
+        None
+    }
+
+    pub fn delete_child(&mut self, name: &str) -> Result<(), String> {
         if let Some(_child) = self.children.remove(name) {
             Ok(())
         } else {
@@ -424,48 +577,88 @@ impl Directory {
         }
     }
 
-    fn cd(&mut self, path: &str) -> Result<&Directory, String> {
+    pub fn cd(&mut self, path: &str) -> Result<&Directory, String> {
         let mut current_dir = self;
+        let mut dir_name = format!("{}{}/", current_dir.name, path);
+        if dir_name.ends_with("//") { dir_name.pop(); }
+        println!("{dir_name}");
+        let cd = current_dir.get_child(&dir_name).ok_or_else(|| "could not find dir")?;
 
-        for dir_name in path.split('/') {
-            match dir_name {
-                "." => continue, // Stay in the current directory
-                ".." => {
-                    return Err("Cannot go beyond the root directory".to_string());
-                    // We'll assume you have a root and cannot go beyond it
-                }
-                name => {
-                    current_dir = current_dir.children.get_mut(name)
-                        .ok_or_else(|| format!("Directory not found: {}", name))?;
-                }
+
+        // for dir_name in path.split('/') {
+        //     match dir_name {
+        //         "." => continue, // Stay in the current directory
+        //         ".." => {
+        //             return Err("Cannot go beyond the root directory".to_string());
+        //             // We'll assume you have a root and cannot go beyond it
+        //         }
+        //         name => {
+        //             current_dir = current_dir.children.get_mut(name)
+        //                 .ok_or_else(|| format!("Directory not found: {}", name))?;
+        //         }
+        //     }
+        // }
+
+        match cd {
+            Node::Directory(dir) => {
+                Ok(dir)
+            }
+            _ => {
+                Err(String::from("! not a valid directory"))
             }
         }
 
-        Ok(current_dir)
+        
     }
 
-    fn ls(&self) {
+    pub fn ls(&self) -> (Vec<String>, Vec<String>) {
+        let mut names = vec![];
+        let mut lengths = vec![];
         if self.children.is_empty() {
-            println!("(empty)");
+            names.push(String::from("~ empty"))
         } else {
-            for child_name in self.children.keys() {
-                let v = child_name.split("/");
-                let name = v.last().unwrap();
-                println!("{}", name);
+            for child in self.children.clone() {
+                match child.1 {
+                    Node::Directory(dir) => {
+                        let mut n = child.0.clone();
+                        _=n.pop();
+                        let v = n.split("/").last().unwrap();
+        
+                        names.push(String::from(v));
+                        lengths.push(dir.children.len().to_string());
+                    }
+                    Node::Program(program) => {
+                        let mut n = program.name.clone();
+                        // _=n.pop();
+                        let v = n.split("/").last().unwrap();
+                        names.push(String::from(v));
+                        lengths.push(String::from("!"));
+                    }
+                    Node::File(file) => {
+                        let mut n = file.name.clone();
+                        // _=n.pop();
+                        let v = n.split("/").last().unwrap();
+                        names.push(String::from(v));
+                        lengths.push(String::from("#"));
+                    }
+                    _ => {}
+                }
+
             }
         }
+        return (names, lengths);
     }
 }
 
-fn terminal_list()
+fn terminal_list(dir: Directory) -> (Vec<String>, Vec<String>)
 {
-    let mut root = Directory::new(String::from("root"));
-    root.add_child(String::from("root/user"));
-    root.add_child(String::from("root/programs"));
-    root.add_child(String::from("root/files"));
-    root.add_child(String::from("root/system"));
+    // let mut root = Directory::new(String::from("root"));
+    // root.add_child(String::from("root/user"));
+    // root.add_child(String::from("root/programs"));
+    // root.add_child(String::from("root/files"));
+    // root.add_child(String::from("root/system"));
 
-    root.ls();
+    return dir.ls();
 } 
 
 fn make_hello() -> String {
