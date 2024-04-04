@@ -169,6 +169,7 @@ pub fn game_setup(
             )
             .with_style(Style {
                 margin: UiRect::all(Val::Px(5.)),
+                align_content: AlignContent::Center,
                 ..default()
             }),
             Label,

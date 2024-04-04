@@ -5,6 +5,8 @@ use crate::camera::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
 use bevy::app::AppExit;
 
+use crate::floor;
+
 // use crate::main::GameState;
 
 #[derive(Component)]
@@ -39,6 +41,10 @@ pub fn setup(
     asset_server: Res<AssetServer>,
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>
 ) {
+
+    let graph: floor::DungeonGraph = floor::generate_simple_dungeon();
+    // println!("{}", graph.nodes.len());
+    graph.print_graph();
 
 
     if let Ok(mut window) = primary_window.get_single_mut() {
