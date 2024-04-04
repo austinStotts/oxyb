@@ -71,7 +71,7 @@ fn main() {
             RapierDebugRenderPlugin::default(),
             // console::ConsolePlugin,
         ))
-        .insert_resource(console::Terminal { text: vec![String::from("universal instruction terminal v0.2.3")] })
+        .insert_resource(console::Terminal { text: vec![String::from("universal instruction terminal v0.2.3")], upper: 13, lower: 1 })
         .insert_resource(console::CurrentCommand { text: String::from("") })
         .insert_resource(game::ActiveCamera::Primary)
         .init_state::<mainmenu::GameState>()
@@ -120,17 +120,17 @@ fn print_state(state: Res<State<mainmenu::GameState>>) {
 //                                                          KEYBOARD INPUTS
 fn keyboard_input(
     input: Res<ButtonInput<KeyCode>>,
-    mut commands: Commands,
-    meshes: ResMut<Assets<Mesh>>,
-    materials: ResMut<Assets<StandardMaterial>>,
-    map: Query<Entity, With<map::MapParent>>,
-    gamestate: Res<State<mainmenu::GameState>>,
-    mut next_state: ResMut<NextState<mainmenu::GameState>>,
+    // mut commands: Commands,
+    // meshes: ResMut<Assets<Mesh>>,
+    // materials: ResMut<Assets<StandardMaterial>>,
+    // map: Query<Entity, With<map::MapParent>>,
+    // gamestate: Res<State<mainmenu::GameState>>,
+    // mut next_state: ResMut<NextState<mainmenu::GameState>>,
     mut player_body: Query<&mut Transform, (With<game::PlayerBody>, Without<MainCamera>)>,
     mut camera_query: Query<&mut Transform, (With<MainCamera>, Without<game::PlayerBody>)>,
     time: Res<Time>,
     mut console_state: Res<State<console::ConsoleState>>,
-    mut next_console_state: ResMut<NextState<console::ConsoleState>>,
+    // mut next_console_state: ResMut<NextState<console::ConsoleState>>,
 ) {
 
     let speed: f32 = 2.0;
@@ -159,78 +159,6 @@ fn keyboard_input(
             }
         }
         _ => {}
-    }
-
-
-    // should probably keep up with keys in each system and not globally here
-
-    if input.just_pressed(KeyCode::KeyW) {
-        // info!("'W' currently pressed");
-        // if let Ok(mut player_transform) = player_body.get_single_mut() {
-        //     player_transform.translation.x += 0.25;
-        // }
-    }
-    if input.just_pressed(KeyCode::KeyA) {
-        info!("'A' just pressed");
-    }
-    if input.just_pressed(KeyCode::KeyS) {
-        info!("'S' just released");
-    }
-    if input.just_pressed(KeyCode::KeyD) {
-        info!("'D' just released");
-    }
-    if input.just_pressed(KeyCode::Space) {
-        info!("'Space' just released");
-    }
-    if input.just_pressed(KeyCode::ControlLeft) {
-        info!("'Left CTRL' just released");
-    }
-    if input.just_pressed(KeyCode::ShiftLeft) {
-        info!("'Left SHIFT' just released");
-    }
-    if input.just_pressed(KeyCode::KeyF) {
-        match console_state.get() {
-            console::ConsoleState::IsNotUsingConsole => {
-                next_console_state.set(console::ConsoleState::IsUsingConsole);
-            }
-            _ => {}
-        }
-        // info!("'F' just released");
-        // for entity in map.iter() {
-        //     commands.entity(entity).despawn_recursive();
-        // }
-        // game::spawn_new_map(commands, meshes, materials);
-    }
-    if input.just_pressed(KeyCode::KeyE) {
-        info!("'E' just released");
-        // match gamestate.get() {
-        //     mainmenu::GameState::MainMenu => {
-        //         println!("SETTING GAME STATE TO |GAME|");
-        //         next_state.set(mainmenu::GameState::Game);
-        //     }
-        //     mainmenu::GameState::Game => {
-        //         println!("SETTING GAME STATE TO |MAIN MENU|");
-        //         next_state.set(mainmenu::GameState::MainMenu);
-        //     }
-        //     _ => {}
-        // }
-    }
-    if input.just_pressed(KeyCode::KeyQ) {
-        info!("'Q' just released");
-    }
-    if input.just_pressed(KeyCode::Tab) {
-        // *active_camera = game::ActiveCamera::Secondary;
-    }
-    if input.just_released(KeyCode::Tab) {
-        // *active_camera = game::ActiveCamera::Primary;
-    }
-    if input.just_pressed(KeyCode::Escape) {
-        // match console_state.get() {
-        //     console::ConsoleState::IsUsingConsole => {
-        //         next_console_state.set(console::ConsoleState::IsNotUsingConsole);
-        //     }
-        //     _ => {}
-        // }
     }
 }
 

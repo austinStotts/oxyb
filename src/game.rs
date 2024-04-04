@@ -1,7 +1,7 @@
 use std::{default, f32::consts::PI, iter::once};
 // use bevy_flycam::prelude::*;
 use bevy::{
-    ecs::{entity, system::{Command, RunSystemOnce, SystemId}}, math::vec3, prelude::*, render::camera::Viewport, transform::{self, TransformSystem}, winit::WinitSettings
+    ecs::{entity, system::{Command, RunSystemOnce, SystemId}}, math::vec3, prelude::*, render::camera::Viewport, text, transform::{self, TransformSystem}, winit::WinitSettings
 };
 // use bevy_flycam::prelude::*;
 // use map::{Room, Rotation};
@@ -41,7 +41,11 @@ pub struct CameraRef;
 #[derive(Component)]
 pub struct Furniture;
 
+#[derive(Component)]
+pub struct UICamera;
 
+#[derive(Component)]
+pub struct UIInteractText;
 
 
 pub fn despawn_all(entities: Query<Entity, With<DespawnOnExit>>, mut commands: Commands) {
@@ -115,6 +119,62 @@ pub fn game_setup(
         MainCamera,
         DespawnOnExit,
     ));
+
+    // commands.spawn(Camera2dBundle {
+    //     camera: Camera {
+    //         order: 1,
+    //         ..default()
+    //     },
+    //     ..default()
+    // }).insert(UICamera);
+
+    commands
+    .spawn(NodeBundle {
+        style: Style {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            justify_content: JustifyContent::SpaceBetween,
+            ..default()
+        },
+        ..default()
+    })
+    .with_children(|parent| {
+        // text
+        parent.spawn((
+            TextBundle::from_section(
+                "hello :3",
+                TextStyle {
+                    font: asset_server.load("fonts/KodeMono-Regular.ttf"),
+                    font_size: 30.0,
+                    color: Color::BLACK.into(),
+                    ..default()
+                },
+            )
+            .with_style(Style {
+                margin: UiRect::all(Val::Px(5.)),
+                ..default()
+            }),
+            Label,
+        ));
+
+        parent.spawn((
+            TextBundle::from_section(
+                "",
+                TextStyle {
+                    font: asset_server.load("fonts/KodeMono-Regular.ttf"),
+                    font_size: 20.0,
+                    color: Color::BLACK.into(),
+                    ..default()
+                },
+            )
+            .with_style(Style {
+                margin: UiRect::all(Val::Px(5.)),
+                ..default()
+            }),
+            Label,
+            UIInteractText,
+        ));
+    });
 
     
     // commands.spawn(PerfUiRoot {}).insert(DespawnOnExit);
@@ -298,7 +358,13 @@ pub fn check_for_interactions(
     interaction_query: Query<(Entity, &InteractionType), With<Interactable>>,
     rapier_context: Res<RapierContext>,
     player_collider: Query<Entity, With<PlayerBody>>,
+    mut uitext_query: Query<&mut Text, With<UIInteractText>>,
+    input: Res<ButtonInput<KeyCode>>,
+    mut console_state: Res<State<console::ConsoleState>>,
+    mut next_console_state: ResMut<NextState<console::ConsoleState>>,
 ) {
+    let mut is_interactable = false;
+    let mut is_interacting = false;
     
     for (player_transform, camera) in player_query.iter() {
         let ray_direction = player_transform.forward();
@@ -306,27 +372,37 @@ pub fn check_for_interactions(
         if let Ok(player_collider_entity) = player_collider.get_single() {
             // println!("INSIDE THE ONE");
             if let Some((interactable_entity, toi)) = rapier_context.cast_ray(player_transform.translation(), ray_direction, 100.0, true, QueryFilter::exclude_dynamic()) {
-                // println!("{:?}", interactable_entity);
-                // println!("distance to contact: {}", (ray_direction * toi).distance(player_transform.translation()));
                 if let Ok((object, interaction_type)) = interaction_query.get(interactable_entity) {
-                    println!("FOUND INTERACTION OBJECT");
-                    println!("{:?}", object);
-                };
-                
-                // if let Ok((interactable_transform, interaction_type)) = interaction_query.get(interactable_entity) {
-                //     let distance = player_transform.translation().distance(interactable_transform.translation());
-                //     println!("distance: {}", distance);
-                //     if distance < 3.0 { // Adjust interaction distance 
-                //         // Now you can use the collider for more precise checks if needed
-                //         // // For example, checking if the ray hit a specific part of the object:
-                //         // if let Some(intersection) = collider.cast_local_ray(&ray, 100.0, true) {
-                //         // // ... specific actions based on the hit location
-                //         // } 
-                //         println!("CAN INTERACT");
-                //         // ... Your main interaction logic ...
-                //     } 
-                // }
+                    let distance = player_transform.translation().distance(ray_direction * toi);
+                    if distance < 3.0 {
+                        if let Ok(mut interaction_ui) = uitext_query.get_single_mut() {
+                            match console_state.get() {
+                                console::ConsoleState::IsNotUsingConsole => {
+                                    interaction_ui.sections[0].value = String::from("[F] - use terminal");
+                                    if input.pressed(KeyCode::KeyF) || input.just_pressed(KeyCode::KeyF) {
+                                        next_console_state.set(console::ConsoleState::IsUsingConsole);
+                                    }
+                                }
+                                _ => { is_interacting = true; }
+                            }
+
+                        }
+                        is_interactable = true;
+                    }
+                }
             }
         }
     }
+
+    if !is_interactable {
+        if let Ok(mut interaction_ui) = uitext_query.get_single_mut() {
+            interaction_ui.sections[0].value = String::from("");
+        }
+    }
+    else if is_interacting {
+        if let Ok(mut interaction_ui) = uitext_query.get_single_mut() {
+            interaction_ui.sections[0].value = String::from("");
+        }
+    }
+
 }

@@ -6,6 +6,8 @@ use bevy_ui::prelude::*;
 use bevy::math::vec3;
 use meshtext::{MeshGenerator, MeshText, TextSection};
 use bevy_rapier3d::{parry::query::Ray, prelude::*};
+use bevy::input::mouse::MouseWheel;
+use bevy::input::mouse::MouseScrollUnit;
 use crate::game;
 
 
@@ -20,6 +22,8 @@ pub struct ConsoleTerminal;
 #[derive(Resource)]
 pub struct Terminal {
     pub text: Vec<String>,
+    pub upper: usize,
+    pub lower: usize,
 }
 
 #[derive(Resource)]
@@ -75,16 +79,19 @@ pub fn update_terminal(
         text_list.push(&line);
     }
 
-    if text_list.len() > 13 {
-        let s = text_list.len() - 13;
-        text_list = text_list[s..].to_vec();
+    if text_list.len() >= terminal.upper {
+        let l = text_list.len();
+        text_list = text_list[(l-terminal.upper)..((l-terminal.upper)+13)].to_vec();
+        let l2 = text_list.len();
+    } else {
+        let leftover = 14 - text_list.len();
+
+        for x in 0..leftover {
+            text_list.push(".");
+        }
     }
 
-    let leftover = 14 - text_list.len();
 
-    for x in 0..leftover {
-        text_list.push(".");
-    }
     let mut command_line_string = String::from("> ");
     command_line_string.push_str(&current_command.text);
     text_list.insert(13, &command_line_string);
@@ -445,10 +452,29 @@ pub fn use_console(
     mut current_directory: ResMut<CurrentDirectory>,
     mut console_state: Res<State<ConsoleState>>,
     input: Res<ButtonInput<KeyCode>>,
+    mut scroll_evr: EventReader<MouseWheel>,
     mut next_console_state: ResMut<NextState<ConsoleState>>,
 ) {
     match console_state.get() {
         ConsoleState::IsUsingConsole => {
+
+            // upper cannot be lower that 13
+            // nor can it be above length of list
+            // list.len() = 15? 15-13
+            for event in scroll_evr.read() {
+                if event.y > 0.0 {
+                    println!("UP");
+                    let size = terminal.text.len();
+                    terminal.upper += 1;
+                    if terminal.upper >= size { terminal.upper = size }
+                } else {
+                    println!("DOWN");
+                    terminal.upper -= 1;
+                    if terminal.upper < 13 { terminal.upper = 13 }
+                }
+            }
+
+
 
             for key in input.get_just_pressed() {
                 println!("{}", current_command.text);
@@ -614,6 +640,12 @@ pub fn use_console(
                                         };
                                     }
                                 }
+
+                                if command.to_lowercase().eq("up") {
+                                    terminal.upper += 1;
+                                    terminal.lower += 1;
+                                }
+
                             }
                             _ => {}
                         }
