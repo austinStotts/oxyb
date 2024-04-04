@@ -193,8 +193,9 @@ pub fn setup_physics(mut commands: Commands) {
     /* Create the bouncing ball. */
     commands
         .spawn(RigidBody::Dynamic)
-        .insert(Collider::capsule_y(1.5, 1.0))
-        .insert(Restitution::coefficient(0.9))
+        .insert(Collider::capsule_y(1.5, 0.25))
+        .insert(Restitution::coefficient(1.0))
+        .insert(LockedAxes::ROTATION_LOCKED)
         .insert(TransformBundle::from(Transform::from_xyz(0.0, 1.5, 0.0)))
         .insert(PlayerBody);
 }
@@ -206,7 +207,7 @@ pub fn update_player_camera(
 
     if let Ok(mut body_transform) = player_body.get_single_mut() {
         if let Ok(mut camera_transform) = player_camera.get_single_mut() {
-            camera_transform.translation = vec3(body_transform.translation.x, body_transform.translation.y, body_transform.translation.z);
+            camera_transform.translation = vec3(body_transform.translation.x, body_transform.translation.y+1.0, body_transform.translation.z);
         }
     }
 
@@ -294,30 +295,38 @@ pub struct Interactable;
 
 pub fn check_for_interactions(
     player_query: Query<(&GlobalTransform, &Camera), With<MainCamera>>,
-    interaction_query: Query<(&GlobalTransform, &InteractionType, Entity), With<Interactable>>,
+    interaction_query: Query<(Entity, &InteractionType), With<Interactable>>,
     rapier_context: Res<RapierContext>,
     player_collider: Query<Entity, With<PlayerBody>>,
 ) {
     
     for (player_transform, camera) in player_query.iter() {
-        let mut ray_direction = camera.world_to_ndc(player_transform, Vec3::Z).expect("could not get camera");
-        // println!("ray direction: {}", ray_direction);
-        if let Ok(pc) = player_collider.get_single() {
-            let qf = QueryFilter::new();
-            if let Some((entity, toi)) = rapier_context.cast_ray(player_transform.translation(), ray_direction, 100.0, true, QueryFilter::exclude_collider(qf, pc)) {
-                for (interactable_tansform, interaction_type, target_entity) in interaction_query.iter() {
-                    let distance = player_transform.translation().distance(interactable_tansform.translation());
-                    // println!("toi: {}", toi);
-                    if distance < 3.0 {
-                        match interaction_type {
-                            InteractionType::Console => {
-                                println!("looking at console! d:{}", distance);
-                            }
-                            _=>{}
-                        }
-                    } 
-                }
-            }else { println!("ERROR IN RAYCAST") }
+        let ray_direction = player_transform.forward();
+
+        if let Ok(player_collider_entity) = player_collider.get_single() {
+            // println!("INSIDE THE ONE");
+            if let Some((interactable_entity, toi)) = rapier_context.cast_ray(player_transform.translation(), ray_direction, 100.0, true, QueryFilter::exclude_dynamic()) {
+                // println!("{:?}", interactable_entity);
+                // println!("distance to contact: {}", (ray_direction * toi).distance(player_transform.translation()));
+                if let Ok((object, interaction_type)) = interaction_query.get(interactable_entity) {
+                    println!("FOUND INTERACTION OBJECT");
+                    println!("{:?}", object);
+                };
+                
+                // if let Ok((interactable_transform, interaction_type)) = interaction_query.get(interactable_entity) {
+                //     let distance = player_transform.translation().distance(interactable_transform.translation());
+                //     println!("distance: {}", distance);
+                //     if distance < 3.0 { // Adjust interaction distance 
+                //         // Now you can use the collider for more precise checks if needed
+                //         // // For example, checking if the ray hit a specific part of the object:
+                //         // if let Some(intersection) = collider.cast_local_ray(&ray, 100.0, true) {
+                //         // // ... specific actions based on the hit location
+                //         // } 
+                //         println!("CAN INTERACT");
+                //         // ... Your main interaction logic ...
+                //     } 
+                // }
+            }
         }
-    }   
+    }
 }

@@ -105,24 +105,44 @@ pub fn spawn_console(
 ) {
 
     let console_scene = asset_server.load("objects/console.gltf#Scene0");
+    // let console_mesh: Handle<Mesh> = asset_server.load("objects/consolewithcollider.gltf#Mesh0/Primitive0");
+    // let cmesh = meshes.get(console_mesh).expect("could not open mesh");
 
-    let console = commands.spawn(SceneBundle {
-        scene: console_scene,
-        transform,
-        ..default()
+    let console = commands.spawn((
+        SceneBundle {
+            scene: console_scene,
+            transform,
+            ..default()
+        },
+    ))
+    .with_children(|parent| {
+        parent.spawn((
+            RigidBody::Fixed,
+            Collider::cuboid(0.7, 0.9, 0.6),
+            TransformBundle::from_transform(Transform {
+                translation: vec3(-0.9, 1.0, -1.0),
+                ..default()
+            }),
+            game::Interactable,
+            game::InteractionType::Console
+        ));
     })
-    .insert((ConsoleTerminal, game::Interactable, game::InteractionType::Console))
-    .insert(ActiveTerminal{id}).id();
-
-    let console_mesh: Handle<Mesh> = asset_server.load("objects/console.gltf#Mesh0/Primitive0");
-    let m = meshes.get(console_mesh).unwrap();
-    println!("M UNWRAPPED");
-
-    let console_collider = commands.spawn
-    (RigidBody::Dynamic)
-    .insert(Collider::from_bevy_mesh(m, &ComputedColliderShape::TriMesh).unwrap())
-    .insert(TransformBundle::from_transform(transform))
+    .insert(ConsoleTerminal)
     .id();
+    // .insert(RigidBody::Dynamic)
+    // .insert(Collider::from_bevy_mesh(cmesh, &ComputedColliderShape::ConvexHull))
+    // .insert((ConsoleTerminal, game::Interactable, game::InteractionType::Console))
+    // .insert(ActiveTerminal{id}).id();
+
+    // let console_mesh: Handle<Mesh> = asset_server.load("objects/consolewithcollider.gltf#Mesh0/Primitive0");
+    // let m = meshes.get(console_mesh).expect("could not unwrap console mesh");
+    // println!("M UNWRAPPED");
+
+    // let console_collider = commands.spawn
+    // (RigidBody::Dynamic)
+    // .insert(Collider::from_bevy_mesh(m, &ComputedColliderShape::TriMesh).unwrap())
+    // .insert(TransformBundle::from_transform(transform))
+    // .id();
     
     let mesh = get_text_mesh("");
     let scale = vec3(0.05, 0.05, 0.05);
