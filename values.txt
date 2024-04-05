@@ -1,20 +1,26 @@
-T: Cube
-P: (0, 0, 0)
-D: (1, 1, 1)
-R: Rot270
-T: Cube
-P: (0, 0, 1)
-D: (1, 1, 1)
-R: Rot90
-T: Cube
-P: (0, 0, 2)
-D: (1, 1, 1)
-R: Rot90
-T: Cube
-P: (0, 0, 3)
-D: (1, 1, 1)
-R: Rot180
-T: RectPrism
-P: (0, 0, 4)
-D: (1, 1, 2)
-R: Rot180
+version: '3.6'
+services:
+  matchbox-server:
+    image: jhelsing/matchbox-server:0.7
+    expose:
+      - "3536"
+    restart: always
+    environment:
+      VIRTUAL_PORT: 3536
+      VIRTUAL_HOST: match-0-7.helsing.studio
+      LETSENCRYPT_HOST: match-0-7.helsing.studio
+      LETSENCRYPT_EMAIL: johanhelsing@gmail.com
+    networks:
+    - nginx
+
+networks:
+  nginx:
+    name: "nginx-network"
+
+    sudo docker run --detach \
+    --name matchbox \
+      -e "VIRTUAL_PORT"=3536 \
+      -e "VIRTUAL_HOST"=stevelovesgames.com \
+      -e "LETSENCRYPT_HOST"=stevelovesgames.com \
+      -e "LETSENCRYPT_EMAIL"=stevelovescartoons.com \
+    jhelsing/matchbox-server:0.7

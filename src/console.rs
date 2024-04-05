@@ -1,6 +1,7 @@
 use std::f32::consts::PI;
 use std::collections::HashMap;
 use bevy::{core_pipeline::core_3d::graph::input, prelude::*, render::render_asset::RenderAssetUsages, transform::commands};
+use bevy_rapier3d::parry::simba::scalar::SupersetOf;
 // use bevy_rapier3d::rapier::dynamics::RigidBody;
 use bevy_ui::prelude::*;
 use bevy::math::vec3;
@@ -9,6 +10,8 @@ use bevy_rapier3d::{parry::query::Ray, prelude::*};
 use bevy::input::mouse::MouseWheel;
 use bevy::input::mouse::MouseScrollUnit;
 use crate::game;
+use bevy_ggrs::*;
+use bevy_matchbox::prelude::*;
 
 
 #[derive(Component)]
@@ -426,6 +429,12 @@ impl Directory {
     }
 }
 
+fn start_matchbox_socket() -> MatchboxSocket<SingleChannel> {
+    let room_url = "ws://stevelovesgames.com/oxyb?next=2";
+    info!("connecting to matchbox server: {room_url}");
+    MatchboxSocket::new_unreliable(room_url)
+}
+
 fn terminal_list(dir: Directory) -> (Vec<String>, Vec<String>) {
     return dir.ls();
 } 
@@ -454,6 +463,7 @@ pub fn use_console(
     input: Res<ButtonInput<KeyCode>>,
     mut scroll_evr: EventReader<MouseWheel>,
     mut next_console_state: ResMut<NextState<ConsoleState>>,
+    mut commands: Commands,
 ) {
     match console_state.get() {
         ConsoleState::IsUsingConsole => {
@@ -641,9 +651,9 @@ pub fn use_console(
                                     }
                                 }
 
-                                if command.to_lowercase().eq("up") {
-                                    terminal.upper += 1;
-                                    terminal.lower += 1;
+                                if command.to_lowercase().eq("start-server") {
+                                    let socket = start_matchbox_socket();
+                                    commands.insert_resource(socket)
                                 }
 
                             }

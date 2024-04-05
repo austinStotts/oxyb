@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 bevy = { version = "0.13.0", features = ["dynamic_linking"] }
 bevy_flycam = "*"
+bevy_ggrs = "0.15.0"
+bevy_matchbox = "0.9.0"
 bevy_rapier3d = "0.25.0"
 bevy_ui = "0.13.1"
 iyes_perf_ui = "0.2.3"

@@ -11,6 +11,8 @@ use crate::{camera::*, postprocessing};
 use crate::map;
 use crate::console;
 use bevy_rapier3d::{parry::query::Ray, prelude::*};
+use bevy_ggrs::*;
+use bevy_matchbox::prelude::*;
 
 
 
@@ -54,6 +56,24 @@ pub fn despawn_all(entities: Query<Entity, With<DespawnOnExit>>, mut commands: C
     }
 }
 
+pub fn wait_for_players(mut socket: ResMut<MatchboxSocket<SingleChannel>>) {
+    if socket.get_channel(0).is_err() {
+        return; // we've already started
+    }
+
+    // Check for new connections
+    socket.update_peers();
+    let players: Vec<PeerId> = socket.connected_peers().collect();
+
+    let num_players = 2;
+    if players.len() < num_players {
+        return; // wait for more players
+    }
+
+    info!("All peers have joined, going in-game");
+    // TODO
+}
+
 //                                                                      GAME SETUP
 pub fn game_setup(
     mut commands: Commands,
@@ -91,7 +111,13 @@ pub fn game_setup(
         ..Default::default()
     });
 
-    commands.spawn(PerfUiCompleteBundle::default());
+    commands.spawn((
+        PerfUiRoot::default(),
+        PerfUiEntryFPS::default(),
+        PerfUiEntryFrameTime::default(),
+        PerfUiEntryEntityCount::default(),
+        PerfUiEntryRunningTime::default(),
+    ));
 
     // main camera
     commands.spawn((
