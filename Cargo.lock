@@ -2580,6 +2580,7 @@ dependencies = [
  "bincode",
  "bitfield-rle",
  "bytemuck",
+ "getrandom",
  "instant",
  "js-sys",
  "parking_lot 0.11.2",
@@ -3005,6 +3006,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c"
 dependencies = [
  "cfg-if",
+ "js-sys",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
@@ -3298,6 +3302,7 @@ dependencies = [
  "async-compat",
  "async-trait",
  "async-tungstenite",
+ "bincode",
  "bytes",
  "cfg-if",
  "derive_more",
@@ -3305,6 +3310,7 @@ dependencies = [
  "futures-channel",
  "futures-timer",
  "futures-util",
+ "ggrs",
  "js-sys",
  "log",
  "matchbox_protocol",
@@ -3837,9 +3843,12 @@ dependencies = [
  "bevy_matchbox",
  "bevy_rapier3d",
  "bevy_ui",
+ "bincode",
  "iyes_perf_ui",
+ "matchbox_socket",
  "meshtext",
  "rand",
+ "serde",
 ]
 
 [[package]]

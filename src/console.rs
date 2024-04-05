@@ -432,7 +432,7 @@ impl Directory {
 fn start_matchbox_socket() -> MatchboxSocket<SingleChannel> {
     let room_url = "ws://stevelovesgames.com/oxyb?next=2";
     info!("connecting to matchbox server: {room_url}");
-    MatchboxSocket::new_unreliable(room_url)
+    MatchboxSocket::new_ggrs(room_url)
 }
 
 fn terminal_list(dir: Directory) -> (Vec<String>, Vec<String>) {

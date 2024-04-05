@@ -1,7 +1,7 @@
 use std::{default, f32::consts::PI, iter::once};
 // use bevy_flycam::prelude::*;
 use bevy::{
-    ecs::{entity, system::{Command, RunSystemOnce, SystemId}}, math::vec3, prelude::*, render::camera::Viewport, text, transform::{self, TransformSystem}, winit::WinitSettings
+    ecs::{entity, system::{Command, RunSystemOnce, SystemId}}, tasks::IoTaskPool, math::vec3, prelude::*, render::camera::Viewport, text, transform::{self, TransformSystem}, winit::WinitSettings
 };
 // use bevy_flycam::prelude::*;
 // use map::{Room, Rotation};
@@ -11,8 +11,10 @@ use crate::{camera::*, postprocessing};
 use crate::map;
 use crate::console;
 use bevy_rapier3d::{parry::query::Ray, prelude::*};
-use bevy_ggrs::*;
+use bevy_ggrs::{ggrs::{NonBlockingSocket, PlayerType}, *};
 use bevy_matchbox::prelude::*;
+use matchbox_socket::{WebRtcSocket, PeerId};
+use serde::{Deserialize, Serialize};
 
 
 
@@ -50,28 +52,70 @@ pub struct UICamera;
 pub struct UIInteractText;
 
 
+
+
 pub fn despawn_all(entities: Query<Entity, With<DespawnOnExit>>, mut commands: Commands) {
     for entity in entities.iter() {
         commands.entity(entity).despawn_recursive();
     }
 }
 
-pub fn wait_for_players(mut socket: ResMut<MatchboxSocket<SingleChannel>>) {
-    if socket.get_channel(0).is_err() {
-        return; // we've already started
+#[derive(Serialize, Deserialize)]
+pub struct MouseMovement {
+    dx: f32,
+    dy: f32,
+}
+
+pub type Config = bevy_ggrs::GgrsConfig<Vec3, PeerId>;
+
+pub fn wait_for_players(
+    mut socket_query: Option<ResMut<MatchboxSocket<SingleChannel>>>,
+    mut commands: Commands,
+) {
+    match socket_query {
+        Some(mut socket) => {
+            // Check for new connections
+            socket.update_peers();
+            let players: Vec<PeerId> = socket.connected_peers().collect();
+        
+            let num_players = 2;
+            if players.len() < num_players {
+                return; // wait for more players
+            }
+        
+            info!("All peers have joined, going in-game");
+
+
+            
+            // create a GGRS P2P session
+            let mut session_builder = ggrs::SessionBuilder::<Config>::new()
+            .with_num_players(num_players)
+            .with_input_delay(2);
+
+            for (i, player) in players.into_iter().enumerate() {
+                session_builder = session_builder
+                    .add_player(PlayerType::Remote(player), i)
+                    .expect("failed to add player");
+            }
+
+            // move the channel out of the socket (required because GGRS takes ownership of it)
+            let channel = socket.take_channel(0).unwrap();
+
+            // start the GGRS session
+            let ggrs_session = session_builder
+            .start_p2p_session(channel)
+            .expect("failed to start session");
+                // .start_p2p_session(channel)
+                // .expect("failed to start session");
+
+            commands.insert_resource(bevy_ggrs::Session::P2P(ggrs_session));
+
+
+        }
+        None => {
+            // info!("waiting for socket");
+        }
     }
-
-    // Check for new connections
-    socket.update_peers();
-    let players: Vec<PeerId> = socket.connected_peers().collect();
-
-    let num_players = 2;
-    if players.len() < num_players {
-        return; // wait for more players
-    }
-
-    info!("All peers have joined, going in-game");
-    // TODO
 }
 
 //                                                                      GAME SETUP

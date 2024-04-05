@@ -11,6 +11,8 @@ use camera::prelude::game::{check_for_interactions, MainCamera};
 // use bevy_flycam::prelude::*;
 use map::{Room, Rotation};
 use iyes_perf_ui::prelude::*;
+use bevy_ggrs::*;
+use bevy_matchbox::prelude::*;
 
 mod camera;
 mod mainmenu;
@@ -122,27 +124,21 @@ fn print_state(state: Res<State<mainmenu::GameState>>) {
 //                                                          KEYBOARD INPUTS
 fn keyboard_input(
     input: Res<ButtonInput<KeyCode>>,
-    // mut commands: Commands,
-    // meshes: ResMut<Assets<Mesh>>,
-    // materials: ResMut<Assets<StandardMaterial>>,
-    // map: Query<Entity, With<map::MapParent>>,
-    // gamestate: Res<State<mainmenu::GameState>>,
-    // mut next_state: ResMut<NextState<mainmenu::GameState>>,
     mut player_body: Query<&mut Transform, (With<game::PlayerBody>, Without<MainCamera>)>,
     mut camera_query: Query<&mut Transform, (With<MainCamera>, Without<game::PlayerBody>)>,
     time: Res<Time>,
     mut console_state: Res<State<console::ConsoleState>>,
-    // mut next_console_state: ResMut<NextState<console::ConsoleState>>,
+    // local_players: Res<LocalPlayers>,
 ) {
 
     let speed: f32 = 2.0;
     let mut forward: Vec3 = vec3(0.0, 0.0, 0.0);
     let mut right: Vec3 = vec3(0.0, 0.0, 0.0);
-    
+    let mut velocity = Vec3::ZERO;
     match console_state.get() {
         &console::ConsoleState::IsNotUsingConsole => {
             for mut transform in camera_query.iter_mut() {
-                let mut velocity = Vec3::ZERO;
+                // let mut velocity = Vec3::ZERO;
                 let local_z = transform.local_z();
                 forward = -Vec3::new(local_z.x, 0., local_z.z);
                 right = Vec3::new(local_z.z, 0., -local_z.x);
@@ -153,18 +149,29 @@ fn keyboard_input(
                 if input.pressed(KeyCode::KeyD) { velocity += right; }
                 velocity = velocity.normalize_or_zero();
         
-                if let Ok(mut player_transform) = player_body.get_single_mut() {
-                    // player_transform.tra (velocity * time.delta_seconds() * speed).x;
-                    player_transform.translation.x += (velocity * time.delta_seconds() * speed).x;
-                    player_transform.translation.z += (velocity * time.delta_seconds() * speed).z;
-                }
+
             }
         }
         _ => {}
     }
+
+    if let Ok(mut player_transform) = player_body.get_single_mut() {
+        // player_transform.tra (velocity * time.delta_seconds() * speed).x;
+        player_transform.translation.x += (velocity * time.delta_seconds() * speed).x;
+        player_transform.translation.z += (velocity * time.delta_seconds() * speed).z;
+        // commands.insert_resource(LocalInputs::<game::Config>(velocity));
+    }
 }
 
 
+// im pretty lost... and my head hurts
+// but we will figure it out!!
+// maybe worth making a side project just to learn how this works before trying to make this work
+// i can get 2 clients connected - i think
+// but i cant send anything between them right now..
+// need to figure out how to send any info at all and print it out on the other side.
+// then i can try and package up the user inputs
+// ggrs also has lots of boilerplate that im not using... might need to figure out what all these inputs and local players and whatever else means
 
 
 
