@@ -11,8 +11,6 @@ use camera::prelude::game::{check_for_interactions, MainCamera};
 // use bevy_flycam::prelude::*;
 use map::{Room, Rotation};
 use iyes_perf_ui::prelude::*;
-use bevy_ggrs::*;
-use bevy_matchbox::prelude::*;
 
 mod camera;
 mod mainmenu;
@@ -97,7 +95,6 @@ fn main() {
             game::update_player_camera,
             console::use_console,
             check_for_interactions,
-            game::wait_for_players,
             // game::switch_cameras,
         ).run_if(in_state(mainmenu::GameState::Game)))
         .add_systems(PostUpdate, (console::update_terminal).run_if(in_state(mainmenu::GameState::Game)))

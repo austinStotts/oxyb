@@ -8,15 +8,14 @@ edition = "2021"
 [dependencies]
 bevy = { version = "0.13.0", features = ["dynamic_linking"] }
 bevy_flycam = "*"
-bevy_ggrs = "0.15.0"
-bevy_matchbox = { version = "0.9", features = ["ggrs"] }
 bevy_rapier3d = "0.25.0"
+bevy_renet = "0.0.11"
 bevy_ui = "0.13.1"
 bincode = "1.3.3"
 iyes_perf_ui = "0.2.3"
-matchbox_socket = "0.9.0"
 meshtext = "0.3.0"
 rand = "0.8.5"
+renet = "0.0.15"
 serde = { version = "1.0.197", features = ["derive"] }
 
 

@@ -11,10 +11,63 @@ use crate::{camera::*, postprocessing};
 use crate::map;
 use crate::console;
 use bevy_rapier3d::{parry::query::Ray, prelude::*};
-use bevy_ggrs::{ggrs::{NonBlockingSocket, PlayerType}, *};
-use bevy_matchbox::prelude::*;
-use matchbox_socket::{WebRtcSocket, PeerId};
+
 use serde::{Deserialize, Serialize};
+use bevy_renet::{
+    client_connected,
+    renet::{
+        transport::{ClientAuthentication, ServerAuthentication, ServerConfig},
+        ConnectionConfig, DefaultChannel, RenetClient, RenetServer, ServerEvent,
+    },
+    transport::{NetcodeClientPlugin, NetcodeServerPlugin},
+    RenetClientPlugin, RenetServerPlugin,
+};
+use renet::{
+    transport::{NetcodeClientTransport, NetcodeServerTransport, NetcodeTransportError},
+    ClientId,
+};
+use std::{collections::HashMap, net::UdpSocket};
+
+#[derive(Debug, Default, Serialize, Deserialize, Component, Resource)]
+struct PlayerInput {
+    up: bool,
+    down: bool,
+    left: bool,
+    right: bool,
+}
+
+#[derive(Debug, Component)]
+struct Player {
+    id: ClientId,
+}
+
+#[derive(Debug, Default, Resource)]
+struct Lobby {
+    players: HashMap<ClientId, Entity>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Component)]
+enum ServerMessages {
+    PlayerConnected { id: ClientId },
+    PlayerDisconnected { id: ClientId },
+}
+
+
+#[derive(Clone, Eq, PartialEq, Debug, Hash, Default, States)]
+pub enum OnlineState {
+    #[default]
+    Offline,
+    Host,
+    Client,
+}
+
+
+// #[derive(Resource)]
+// pub struct OnlineState {
+//     number_of_players: isize,
+    
+// }
+
 
 
 
@@ -60,63 +113,7 @@ pub fn despawn_all(entities: Query<Entity, With<DespawnOnExit>>, mut commands: C
     }
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct MouseMovement {
-    dx: f32,
-    dy: f32,
-}
 
-pub type Config = bevy_ggrs::GgrsConfig<Vec3, PeerId>;
-
-pub fn wait_for_players(
-    mut socket_query: Option<ResMut<MatchboxSocket<SingleChannel>>>,
-    mut commands: Commands,
-) {
-    match socket_query {
-        Some(mut socket) => {
-            // Check for new connections
-            socket.update_peers();
-            let players: Vec<PeerId> = socket.connected_peers().collect();
-        
-            let num_players = 2;
-            if players.len() < num_players {
-                return; // wait for more players
-            }
-        
-            info!("All peers have joined, going in-game");
-
-
-            
-            // create a GGRS P2P session
-            let mut session_builder = ggrs::SessionBuilder::<Config>::new()
-            .with_num_players(num_players)
-            .with_input_delay(2);
-
-            for (i, player) in players.into_iter().enumerate() {
-                session_builder = session_builder
-                    .add_player(PlayerType::Remote(player), i)
-                    .expect("failed to add player");
-            }
-
-            // move the channel out of the socket (required because GGRS takes ownership of it)
-            let channel = socket.take_channel(0).unwrap();
-
-            // start the GGRS session
-            let ggrs_session = session_builder
-            .start_p2p_session(channel)
-            .expect("failed to start session");
-                // .start_p2p_session(channel)
-                // .expect("failed to start session");
-
-            commands.insert_resource(bevy_ggrs::Session::P2P(ggrs_session));
-
-
-        }
-        None => {
-            // info!("waiting for socket");
-        }
-    }
-}
 
 //                                                                      GAME SETUP
 pub fn game_setup(

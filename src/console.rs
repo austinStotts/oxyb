@@ -9,9 +9,24 @@ use meshtext::{MeshGenerator, MeshText, TextSection};
 use bevy_rapier3d::{parry::query::Ray, prelude::*};
 use bevy::input::mouse::MouseWheel;
 use bevy::input::mouse::MouseScrollUnit;
+use serde::{Deserialize, Serialize};
+use bevy_renet::{
+    client_connected,
+    renet::{
+        transport::{ClientAuthentication, ServerAuthentication, ServerConfig},
+        ConnectionConfig, DefaultChannel, RenetClient, RenetServer, ServerEvent,
+    },
+    transport::{NetcodeClientPlugin, NetcodeServerPlugin},
+    RenetClientPlugin, RenetServerPlugin,
+};
+use renet::{
+    transport::{NetcodeClientTransport, NetcodeServerTransport, NetcodeTransportError},
+    ClientId,
+};
+use std::time::SystemTime;
+use std::{collections::HashMap, net::UdpSocket};
 use crate::game;
-use bevy_ggrs::*;
-use bevy_matchbox::prelude::*;
+
 
 
 #[derive(Component)]
@@ -429,11 +444,6 @@ impl Directory {
     }
 }
 
-fn start_matchbox_socket() -> MatchboxSocket<SingleChannel> {
-    let room_url = "ws://stevelovesgames.com/oxyb?next=2";
-    info!("connecting to matchbox server: {room_url}");
-    MatchboxSocket::new_ggrs(room_url)
-}
 
 fn terminal_list(dir: Directory) -> (Vec<String>, Vec<String>) {
     return dir.ls();
@@ -652,8 +662,7 @@ pub fn use_console(
                                 }
 
                                 if command.to_lowercase().eq("start-server") {
-                                    let socket = start_matchbox_socket();
-                                    commands.insert_resource(socket)
+
                                 }
 
                             }
@@ -665,5 +674,47 @@ pub fn use_console(
         }
         _ => {}
     }
+}
+
+
+
+
+
+fn new_renet_client() -> (RenetClient, NetcodeClientTransport) {
+    let server_addr = "127.0.0.1:5000".parse().unwrap();
+    let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+    let client_id = current_time.as_millis() as u64;
+    let authentication = ClientAuthentication::Unsecure {
+        client_id,
+        protocol_id: 7,
+        server_addr,
+        user_data: None,
+    };
+
+    let transport = NetcodeClientTransport::new(current_time, authentication, socket).unwrap();
+    let client = RenetClient::new(ConnectionConfig::default());
+
+    (client, transport)
+}
+
+
+
+fn new_renet_server() -> (RenetServer, NetcodeServerTransport) {
+    let public_addr = "127.0.0.1:5000".parse().unwrap();
+    let socket = UdpSocket::bind(public_addr).unwrap();
+    let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+    let server_config = ServerConfig {
+        current_time,
+        max_clients: 64,
+        protocol_id: 7,
+        public_addresses: vec![public_addr],
+        authentication: ServerAuthentication::Unsecure,
+    };
+
+    let transport = NetcodeServerTransport::new(server_config, socket).unwrap();
+    let server = RenetServer::new(ConnectionConfig::default());
+
+    (server, transport)
 }
 
