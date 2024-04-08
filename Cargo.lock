@@ -2928,6 +2928,7 @@ dependencies = [
  "rand",
  "renet",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -1,0 +1,49 @@
+{
+    "name": "root",
+    "children": {
+        "0":{
+            "Directory": {
+                "name": "users",
+                "children": {
+                    "0":{
+                        "Directory": {
+                            "name": "root/users/sumi",
+                            "children": {}
+                        }
+                    }
+                }
+            }
+        },
+        "1":{
+            "Directory": {
+                "name": "programs",
+                "children": {
+                    "0": {
+                        "Program": {
+                            "name": "root/programs/create_server.exe"
+                        }
+                        
+                    },
+                    "1":{
+                        "Program": {
+                            "name": "root/programs/join_server.exe"
+                        }
+                    }
+                }
+            }
+        },
+        "2":{
+            "Directory": {
+                "name": "files",
+                "children": {
+                    "0":{
+                        "File": {
+                            "name": "root/files/data.txt",
+                            "content": "created_at : null\n floors_decended : null\n enemies_defeated : null"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

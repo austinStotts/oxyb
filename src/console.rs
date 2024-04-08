@@ -24,7 +24,7 @@ use renet::{
     ClientId,
 };
 use std::time::SystemTime;
-use std::{collections::HashMap, net::UdpSocket};
+use std::{net::UdpSocket};
 use crate::game;
 
 
@@ -254,7 +254,7 @@ fn get_text_pos(bundle: &mut PbrBundle, index: usize) -> PbrBundle {
 //            TERMINAL STRUCTURE AND NAVIGATION
 
 
-#[derive(Resource)]
+#[derive(Resource, Deserialize)]
 pub struct GameDirectory {
     pub root: Directory
 }
@@ -262,25 +262,26 @@ pub struct GameDirectory {
 #[derive(Resource)]
 pub struct CurrentDirectory(pub Directory);
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize)]
 pub enum Node {
     Directory(Directory),
     Program(Program),
     File(File)
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize)]
 pub struct Program {
     name: String
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize)]
 pub struct File {
-    name: String
+    name: String,
+    content: String
 }
 
 // A node representing a directory
-#[derive(Clone)]
+#[derive(Clone, Deserialize)]
 pub struct Directory {
     pub name: String,
     pub children: HashMap<String, Node>, // Map of child directory names to Directory structs
@@ -321,7 +322,7 @@ impl Directory {
         if self.children.contains_key(&name) {
             Err(format!("name '{}' already exists", &name))
         } else {
-            let mut new_program = File { name: name.clone() };
+            let mut new_program = File { name: name.clone(), content: String::from("") };
             self.children.insert(name, Node::File(new_program));
             Ok(())
         }
@@ -680,41 +681,4 @@ pub fn use_console(
 
 
 
-fn new_renet_client() -> (RenetClient, NetcodeClientTransport) {
-    let server_addr = "127.0.0.1:5000".parse().unwrap();
-    let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
-    let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
-    let client_id = current_time.as_millis() as u64;
-    let authentication = ClientAuthentication::Unsecure {
-        client_id,
-        protocol_id: 7,
-        server_addr,
-        user_data: None,
-    };
-
-    let transport = NetcodeClientTransport::new(current_time, authentication, socket).unwrap();
-    let client = RenetClient::new(ConnectionConfig::default());
-
-    (client, transport)
-}
-
-
-
-fn new_renet_server() -> (RenetServer, NetcodeServerTransport) {
-    let public_addr = "127.0.0.1:5000".parse().unwrap();
-    let socket = UdpSocket::bind(public_addr).unwrap();
-    let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
-    let server_config = ServerConfig {
-        current_time,
-        max_clients: 64,
-        protocol_id: 7,
-        public_addresses: vec![public_addr],
-        authentication: ServerAuthentication::Unsecure,
-    };
-
-    let transport = NetcodeServerTransport::new(server_config, socket).unwrap();
-    let server = RenetServer::new(ConnectionConfig::default());
-
-    (server, transport)
-}
 

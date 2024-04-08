@@ -1,4 +1,4 @@
-use std::{default, f32::consts::PI, iter::once};
+use std::{default, f32::consts::PI, iter::once, fs::read_to_string};
 // use bevy_flycam::prelude::*;
 use bevy::{
     ecs::{entity, system::{Command, RunSystemOnce, SystemId}}, tasks::IoTaskPool, math::vec3, prelude::*, render::camera::Viewport, text, transform::{self, TransformSystem}, winit::WinitSettings
@@ -13,44 +13,8 @@ use crate::console;
 use bevy_rapier3d::{parry::query::Ray, prelude::*};
 
 use serde::{Deserialize, Serialize};
-use bevy_renet::{
-    client_connected,
-    renet::{
-        transport::{ClientAuthentication, ServerAuthentication, ServerConfig},
-        ConnectionConfig, DefaultChannel, RenetClient, RenetServer, ServerEvent,
-    },
-    transport::{NetcodeClientPlugin, NetcodeServerPlugin},
-    RenetClientPlugin, RenetServerPlugin,
-};
-use renet::{
-    transport::{NetcodeClientTransport, NetcodeServerTransport, NetcodeTransportError},
-    ClientId,
-};
-use std::{collections::HashMap, net::UdpSocket};
+use serde_json;
 
-#[derive(Debug, Default, Serialize, Deserialize, Component, Resource)]
-struct PlayerInput {
-    up: bool,
-    down: bool,
-    left: bool,
-    right: bool,
-}
-
-#[derive(Debug, Component)]
-struct Player {
-    id: ClientId,
-}
-
-#[derive(Debug, Default, Resource)]
-struct Lobby {
-    players: HashMap<ClientId, Entity>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Component)]
-enum ServerMessages {
-    PlayerConnected { id: ClientId },
-    PlayerDisconnected { id: ClientId },
-}
 
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Default, States)]
@@ -370,7 +334,6 @@ pub fn update_settings(mut settings: Query<&mut postprocessing::PostProcessSetti
 
 
 
-
 //                                           MAKE DEFAULT DIRECTORY
 
 pub fn make_defualt_directory () -> console::GameDirectory {
@@ -379,28 +342,36 @@ pub fn make_defualt_directory () -> console::GameDirectory {
         root: console::Directory::new(String::from("root/"))
     };
 
-    _=root.root.add_dir(String::from("root/users/")).unwrap();
-    _=root.root.add_dir(String::from("root/system/")).unwrap();
-    _=root.root.add_dir(String::from("root/programs/")).unwrap();
-    _=root.root.add_dir(String::from("root/files/")).unwrap();
+    // _=root.root.add_dir(String::from("root/users/")).unwrap();
+    // _=root.root.add_dir(String::from("root/system/")).unwrap();
+    // _=root.root.add_dir(String::from("root/programs/")).unwrap();
+    // _=root.root.add_dir(String::from("root/files/")).unwrap();
 
-    let users = root.root.get_dir("root/users/").unwrap();
-    _=users.add_dir(String::from("root/users/steve/")).unwrap();
-    _=users.add_dir(String::from("root/users/sumi/")).unwrap();
+    // let users = root.root.get_dir("root/users/").unwrap();
+    // _=users.add_dir(String::from("root/users/steve/")).unwrap();
+    // _=users.add_dir(String::from("root/users/sumi/")).unwrap();
 
-    let programs = root.root.get_dir("root/programs/").unwrap();
-    _=programs.add_program(String::from("root/programs/save.exe")).unwrap();
-    _=programs.add_program(String::from("root/programs/decend.exe")).unwrap();
+    // let programs = root.root.get_dir("root/programs/").unwrap();
+    // _=programs.add_program(String::from("root/programs/save.exe")).unwrap();
+    // _=programs.add_program(String::from("root/programs/decend.exe")).unwrap();
 
-    let files = root.root.get_dir("root/files/").unwrap();
-    _=files.add_dir(String::from("root/files/floors/")).unwrap();
-    _=files.add_dir(String::from("root/files/enemies/")).unwrap();
-    _=files.add_dir(String::from("root/files/items/")).unwrap();
+    // let files = root.root.get_dir("root/files/").unwrap();
+    // _=files.add_dir(String::from("root/files/floors/")).unwrap();
+    // _=files.add_dir(String::from("root/files/enemies/")).unwrap();
+    // _=files.add_dir(String::from("root/files/items/")).unwrap();
 
-    let floors = files.get_dir("root/files/floors/").unwrap();
-    _=floors.add_file(String::from("root/files/floors/1.txt")).unwrap();
-    _=floors.add_file(String::from("root/files/floors/2.txt")).unwrap();
-    _=floors.add_file(String::from("root/files/floors/3.txt")).unwrap();
+    // let floors = files.get_dir("root/files/floors/").unwrap();
+    // _=floors.add_file(String::from("root/files/floors/1.txt")).unwrap();
+    // _=floors.add_file(String::from("root/files/floors/2.txt")).unwrap();
+    // _=floors.add_file(String::from("root/files/floors/3.txt")).unwrap();
+
+    let init_file = read_to_string("./src/default_terminal_state.json").expect("could not read json");
+    let value: console::Directory = serde_json::from_str(&init_file).expect("could not parse json");
+    
+    for (name, children) in value.children {
+        println!("{}", name);
+    }
+
 
     return root;
 }
